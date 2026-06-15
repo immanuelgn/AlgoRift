@@ -12,7 +12,7 @@ physics, trace binary-search windows, unlock a piercing power, and fight a
 procedural boss. The learning mechanic is embedded in play instead of appearing
 as a detached quiz.
 
-## Playable World 1
+## Playable Worlds
 
 World 1 contains three distinct side-scrolling sectors:
 
@@ -27,6 +27,11 @@ The binary trace uses the sorted sequence `3, 8, 12, 17, 23, 31, 42`. At each
 terminal, the player compares the active pivot with `42` and patches the lower
 or higher search window. Correct traces remove firewalls and keep the
 platforming flow moving.
+
+World 2 adds the Sort Circuit, a hands-on Bubble Sort challenge. Players compare
+adjacent packets, swap only when the left value is larger than the right value,
+and repeat until the array is ordered. The goal is to make the algorithm visible
+as a game system instead of a detached worksheet.
 
 ## Game Engine
 
@@ -69,8 +74,8 @@ Playing as a guest requires no account. Optional Supabase accounts provide:
 Passwords are managed by Supabase Auth and are never stored by AlgoRift. Both
 database tables have Row Level Security enabled, and every policy is restricted
 to `auth.uid()`. The frontend uses only the browser-safe project URL and
-publishable key. Secret keys, service-role keys, and database passwords must
-never be placed in `NEXT_PUBLIC_*` variables.
+`NEXT_PUBLIC_SUPABASE_ANON_KEY`. Secret keys, service-role keys, and database
+passwords must never be placed in `NEXT_PUBLIC_*` variables.
 
 Run [supabase/algorift_setup.sql](supabase/algorift_setup.sql) in the Supabase
 SQL Editor to create the tables, trigger, constraints, grants, and RLS policies.
@@ -97,7 +102,7 @@ Guest mode works without environment variables. For cloud accounts, create
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_KEY
+NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_BROWSER_SAFE_ANON_KEY
 ```
 
 Then open [http://localhost:3000](http://localhost:3000).
@@ -113,7 +118,7 @@ npm audit
 
 ## Roadmap
 
-- Sorting race
+- More side-scrolling Bubble Sort hazards
 - Stack and queue tower defense
 - Tree traversal climbing world
 - Dijkstra shortest-path boss fight

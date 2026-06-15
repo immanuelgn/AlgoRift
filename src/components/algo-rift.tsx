@@ -20,6 +20,7 @@ import {
   Mail,
   Map,
   Play,
+  RotateCcw,
   Save,
   Shield,
   SlidersHorizontal,
@@ -45,7 +46,7 @@ import {
   supabaseConfigurationError,
 } from "@/lib/supabase";
 
-type View = "home" | "battle" | "world";
+type View = "home" | "battle" | "sort" | "world";
 
 type PlayerProgress = {
   completedLevel: number;
@@ -54,6 +55,7 @@ type PlayerProgress = {
 };
 
 const STORAGE_KEY = "algorift-progress-v2";
+const PLAYABLE_WORLD_COUNT = 2;
 const DEFAULT_PROGRESS: PlayerProgress = {
   completedLevel: 0,
   xp: 0,
@@ -67,7 +69,7 @@ const worlds = [
     level: 1,
     title: "Binary Override",
     realm: "Kernel Frontier",
-    topics: "Binary Trace · Physics Tuning · Momentum",
+    topics: "Binary Search - Physics Tuning - Momentum",
     color: "sun",
     description:
       "Breach three platforming sectors and narrow a live signal window.",
@@ -76,7 +78,7 @@ const worlds = [
     level: 2,
     title: "Sort Circuit",
     realm: "Packet Foundry",
-    topics: "Bubble · Merge · Quick Sort",
+    topics: "Bubble Sort - Comparisons - Swaps",
     color: "sky",
     description: "Reorder hostile packets while the factory keeps moving.",
   },
@@ -84,7 +86,7 @@ const worlds = [
     level: 3,
     title: "Stack Breach",
     realm: "Memory Vault",
-    topics: "Stacks · Queues · Hash Maps",
+    topics: "Stacks - Queues - Hash Maps",
     color: "mint",
     description: "Route processes through a layered security tower.",
   },
@@ -92,7 +94,7 @@ const worlds = [
     level: 4,
     title: "Tree Runner",
     realm: "Branch Network",
-    topics: "Trees · BST · Traversal",
+    topics: "Trees - BST - Traversal",
     color: "leaf",
     description: "Climb a branching world without losing the active route.",
   },
@@ -100,7 +102,7 @@ const worlds = [
     level: 5,
     title: "Weighted Warden",
     realm: "Graph Citadel",
-    topics: "BFS · DFS · Dijkstra",
+    topics: "BFS - DFS - Dijkstra",
     color: "violet",
     description: "Race a network boss through weighted paths.",
   },
@@ -108,7 +110,7 @@ const worlds = [
     level: 6,
     title: "Greedy Run",
     realm: "Bandwidth Dunes",
-    topics: "Greedy · Intervals",
+    topics: "Greedy - Intervals",
     color: "gold",
     description: "Commit to local openings while the route collapses.",
   },
@@ -145,6 +147,9 @@ function getFriendlyAuthError(error: unknown) {
     normalized.includes("networkerror")
   ) {
     return "AlgoRift could not reach the cloud service. Refresh once and try again.";
+  }
+  if (normalized.includes("invalid api key")) {
+    return "The cloud save key is incorrect. Use NEXT_PUBLIC_SUPABASE_ANON_KEY from the Supabase API settings.";
   }
   if (normalized.includes("email address not authorized")) {
     return "Public confirmation email is not available yet. Guest saves still work on this device.";
@@ -254,6 +259,7 @@ export function AlgoRift() {
     "local" | "loading" | "saving" | "saved" | "error"
   >(isSupabaseConfigured ? "loading" : "local");
   const pageTop = useRef<HTMLDivElement>(null);
+  const learningGuide = useRef<HTMLElement>(null);
   const progressRef = useRef(progress);
 
   useEffect(() => {
@@ -418,12 +424,47 @@ export function AlgoRift() {
   }, [cloudHydrated, progress, user]);
 
   const displayLevel = Math.max(1, progress.completedLevel + 1);
+  const nextPlayableWorld = progress.completedLevel >= 1 ? 2 : 1;
+  const nextMission =
+    nextPlayableWorld === 1
+      ? {
+          label: "1-1",
+          title: "Boot Sequence",
+          topics: "Binary Search - Momentum - System Override",
+          reward: "+250 XP",
+        }
+      : {
+          label: "2-1",
+          title: "Sort Circuit",
+          topics: "Bubble Sort - Compare - Swap",
+          reward: "+180 XP",
+        };
 
   function changeView(nextView: View) {
     setView(nextView);
     window.requestAnimationFrame(() => {
       pageTop.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
+  }
+
+  function showLearningGuide() {
+    setView("home");
+    window.requestAnimationFrame(() => {
+      learningGuide.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }
+
+  function startWorld(level: number) {
+    if (level === 1) {
+      changeView("battle");
+      return;
+    }
+    if (level === 2 && progress.completedLevel >= 1) {
+      changeView("sort");
+    }
   }
 
   const handleGameComplete = useCallback(
@@ -594,6 +635,9 @@ export function AlgoRift() {
           >
             <Map size={16} /> World
           </button>
+          <button type="button" onClick={showLearningGuide}>
+            <Terminal size={16} /> Learn
+          </button>
         </nav>
 
         <div className="header-actions">
@@ -676,27 +720,31 @@ export function AlgoRift() {
                 <button
                   className="game-primary"
                   type="button"
-                  onClick={() => changeView("battle")}
+                  onClick={() => startWorld(nextPlayableWorld)}
                 >
                   <Play size={18} fill="currentColor" />
-                  {progress.completedLevel > 0 ? "Replay World 1" : "Enter World 1"}
+                  {progress.completedLevel === 0
+                    ? "Enter World 1"
+                    : progress.completedLevel === 1
+                      ? "Enter World 2"
+                      : "Replay World 2"}
                 </button>
                 <button
                   className="game-secondary"
                   type="button"
-                  onClick={() => changeView("world")}
+                  onClick={showLearningGuide}
                 >
-                  View world map <ArrowRight size={17} />
+                  Learn algorithms <ArrowRight size={17} />
                 </button>
               </div>
               <div className="first-mission">
-                <span className="mission-number">1-1</span>
+                <span className="mission-number">{nextMission.label}</span>
                 <div>
                   <small>NEXT SECTOR</small>
-                  <strong>Boot Sequence</strong>
-                  <span>Momentum · Binary Trace · System Override</span>
+                  <strong>{nextMission.title}</strong>
+                  <span>{nextMission.topics}</span>
                 </div>
-                <span className="mission-reward">+250 XP</span>
+                <span className="mission-reward">{nextMission.reward}</span>
               </div>
             </div>
 
@@ -710,7 +758,7 @@ export function AlgoRift() {
                 <span /><Flame size={20} />
               </div>
               <div className="hero-boss"><BossSprite /></div>
-              <div className="floating-coin coin-one">0.20×</div>
+              <div className="floating-coin coin-one">0.20x</div>
               <div className="floating-coin coin-two">O(log n)</div>
               <div className="ground-platform">
                 <span /><span /><span /><span /><span />
@@ -753,6 +801,44 @@ export function AlgoRift() {
             </div>
           </section>
 
+          <section className="learning-strip" ref={learningGuide}>
+            <div className="simple-heading">
+              <span>WHAT YOU LEARN</span>
+              <h2>Algorithms are the powers, locks, and circuits.</h2>
+              <p>
+                Each playable world has a short algorithm coach plus a hands-on
+                mechanic. Start with Binary Search in World 1, then clear Bubble
+                Sort in World 2.
+              </p>
+            </div>
+            <div className="learning-cards">
+              <article>
+                <small>WORLD 1</small>
+                <h3>Binary Search</h3>
+                <p>
+                  Terminals ask you to compare the midpoint and discard the
+                  impossible half of a sorted signal.
+                </p>
+              </article>
+              <article>
+                <small>WORLD 2</small>
+                <h3>Bubble Sort</h3>
+                <p>
+                  Packet gates teach adjacent comparisons: swap when left is
+                  greater than right, repeat until sorted.
+                </p>
+              </article>
+              <article>
+                <small>COMING NEXT</small>
+                <h3>Stacks, Graphs, DP</h3>
+                <p>
+                  Future worlds turn memory rules, shortest paths, and cached
+                  states into mechanics.
+                </p>
+              </article>
+            </div>
+          </section>
+
           <section className="power-feature">
             <div className="power-feature-art" aria-hidden="true">
               <div className="power-orbit orbit-one" />
@@ -785,7 +871,9 @@ export function AlgoRift() {
               <h2>
                 {progress.completedLevel === 0
                   ? "World 1 is ready."
-                  : "World 1 root access secured."}
+                  : progress.completedLevel === 1
+                    ? "World 2 is unlocked."
+                    : "World 2 sort circuit secured."}
               </h2>
               <p>
                 {user
@@ -795,8 +883,8 @@ export function AlgoRift() {
             </div>
             <div className="progress-card">
               <div className="progress-card-top">
-                <span>WORLD 1</span>
-                <strong>{progress.completedLevel > 0 ? "1 / 7" : "0 / 7"}</strong>
+                <span>CAMPAIGN</span>
+                <strong>{progress.completedLevel} / {worlds.length}</strong>
               </div>
               <div className="campaign-track">
                 <span style={{ width: `${(progress.completedLevel / 7) * 100}%` }} />
@@ -813,6 +901,13 @@ export function AlgoRift() {
         <CanvasPlatformer
           playerName={username || "NOVA"}
           soundOn={soundOn}
+          onComplete={handleGameComplete}
+          onExit={() => changeView("world")}
+        />
+      )}
+
+      {view === "sort" && (
+        <SortCircuit
           onComplete={handleGameComplete}
           onExit={() => changeView("world")}
         />
@@ -836,21 +931,24 @@ export function AlgoRift() {
             <div className="path-line" />
             {worlds.map((world) => {
               const complete = progress.completedLevel >= world.level;
-              const available = world.level === 1;
+              const playable =
+                world.level <= PLAYABLE_WORLD_COUNT &&
+                world.level <= progress.completedLevel + 1;
+              const inDevelopment = world.level > PLAYABLE_WORLD_COUNT;
               return (
                 <article
                   className={[
                     "world-level",
                     `world-${world.color}`,
                     complete ? "complete" : "",
-                    available ? "available" : "locked",
+                    playable ? "available" : "locked",
                   ].join(" ")}
                   key={world.level}
                 >
                   <div className="level-node">
                     {complete ? (
                       <Check size={20} />
-                    ) : available ? (
+                    ) : playable ? (
                       world.level
                     ) : (
                       <LockKeyhole size={18} />
@@ -860,21 +958,28 @@ export function AlgoRift() {
                     <div className="level-card-top">
                       <span>WORLD {world.level}</span>
                       <span>
-                        {complete ? "CLEARED" : available ? "AVAILABLE" : "IN DEVELOPMENT"}
+                        {complete
+                          ? "CLEARED"
+                          : playable
+                            ? "PLAYABLE"
+                            : inDevelopment
+                              ? "IN DEVELOPMENT"
+                              : "LOCKED"}
                       </span>
                     </div>
                     <small>{world.realm}</small>
                     <h2>{world.title}</h2>
                     <strong>{world.topics}</strong>
                     <p>{world.description}</p>
-                    {available ? (
-                      <button type="button" onClick={() => changeView("battle")}>
+                    {playable ? (
+                      <button type="button" onClick={() => startWorld(world.level)}>
                         {complete ? "Replay world" : "Enter world"}
                         <ArrowRight size={16} />
                       </button>
                     ) : (
                       <span className="unlock-note">
-                        <LockKeyhole size={14} /> Planned playable world
+                        <LockKeyhole size={14} />
+                        {inDevelopment ? " Planned playable world" : " Clear the prior world"}
                       </span>
                     )}
                   </div>
@@ -969,6 +1074,152 @@ export function AlgoRift() {
   );
 }
 
+type SortCircuitProps = {
+  onExit: () => void;
+  onComplete: (payload: PlayerProgress) => void;
+};
+
+const SORT_START = [6, 3, 8, 1, 5];
+
+function isSorted(values: number[]) {
+  return values.every((value, index) => index === 0 || values[index - 1] <= value);
+}
+
+function SortCircuit({ onExit, onComplete }: SortCircuitProps) {
+  const [packets, setPackets] = useState(SORT_START);
+  const [moves, setMoves] = useState(0);
+  const [errors, setErrors] = useState(0);
+  const [message, setMessage] = useState(
+    "Compare neighbors. Swap only when the left packet is larger.",
+  );
+  const [complete, setComplete] = useState(false);
+
+  function resetSort() {
+    setPackets(SORT_START);
+    setMoves(0);
+    setErrors(0);
+    setComplete(false);
+    setMessage("Compare neighbors. Swap only when the left packet is larger.");
+  }
+
+  function swapAt(index: number) {
+    if (complete) return;
+    const left = packets[index];
+    const right = packets[index + 1];
+
+    if (left <= right) {
+      setErrors((current) => current + 1);
+      setMessage(
+        `${left} is already before ${right}. Bubble Sort leaves ordered neighbors alone.`,
+      );
+      return;
+    }
+
+    const next = [...packets];
+    next[index] = right;
+    next[index + 1] = left;
+    const solved = isSorted(next);
+    setPackets(next);
+    setMoves((current) => current + 1);
+    setMessage(
+      solved
+        ? "Sorted. Every neighbor pair is now in ascending order."
+        : `${left} was larger than ${right}, so the packets swapped.`,
+    );
+
+    if (solved) {
+      setComplete(true);
+      onComplete({
+        completedLevel: 2,
+        xp: 430,
+        redlineVisionUnlocked: true,
+      });
+    }
+  }
+
+  return (
+    <main className="sort-circuit-view">
+      <header className="canvas-game-toolbar">
+        <button type="button" onClick={onExit}>
+          <ArrowLeft size={17} /> Exit
+        </button>
+        <div>
+          <span>WORLD 2</span>
+          <strong>Sort Circuit</strong>
+        </div>
+        <button type="button" onClick={resetSort}>
+          <RotateCcw size={16} /> Restart
+        </button>
+      </header>
+
+      <section className="sort-circuit-shell">
+        <div className="sort-briefing">
+          <span>ALGORITHM COACH</span>
+          <h1>Bubble Sort is compare, then swap.</h1>
+          <p>
+            Work left to right. If two neighbors are backwards, swap them. The
+            largest values drift toward the end of the array like packets moving
+            down a circuit belt.
+          </p>
+        </div>
+
+        <div className="sort-board" aria-label="Bubble sort packet board">
+          <div className="sort-track">
+            {packets.map((packet, index) => (
+              <div className="packet-stack" key={`${packet}-${index}`}>
+                <div className="packet-card">
+                  <small>PACKET</small>
+                  <strong>{packet}</strong>
+                </div>
+                {index < packets.length - 1 && (
+                  <button type="button" onClick={() => swapAt(index)}>
+                    compare {packet} / {packets[index + 1]}
+                    <span>SWAP IF LEFT &gt; RIGHT</span>
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <aside className="sort-console">
+          <div>
+            <span>LIVE RULE</span>
+            <strong>if left &gt; right: swap()</strong>
+            <p>{message}</p>
+          </div>
+          <div className="sort-stats">
+            <span>{moves} swaps</span>
+            <span>{errors} misreads</span>
+            <span>{complete ? "sorted" : "in progress"}</span>
+          </div>
+        </aside>
+
+        {complete && (
+          <div className="canvas-complete" role="dialog" aria-label="Sort Circuit complete">
+            <div>
+              <span>SORT CIRCUIT CLEAR</span>
+              <h2>World 2 unlocked and completed.</h2>
+              <p>
+                You used adjacent comparisons to turn an unsorted array into an
+                ascending one.
+              </p>
+              <div className="canvas-complete-stats">
+                <strong>+180 XP</strong>
+                <strong>{moves} SWAPS</strong>
+                <strong>WORLD 2</strong>
+              </div>
+              <button type="button" onClick={onExit}>
+                Return to world map <ArrowRight size={17} />
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}
+
 type AccountDialogProps = {
   authBusy: boolean;
   authError: string;
@@ -1025,7 +1276,7 @@ function AccountDialog({
           onClick={onClose}
           aria-label="Close account"
         >
-          ×
+          x
         </button>
 
         {user ? (
@@ -1058,7 +1309,7 @@ function AccountDialog({
                         : "Progress saved"}
                 </strong>
                 <span>
-                  Level {displayLevel} · {progress.xp} XP · private to this account
+                  Level {displayLevel} - {progress.xp} XP - private to this account
                 </span>
               </div>
             </div>

@@ -41,6 +41,11 @@ const INITIAL_UI_STATE: GameUiState = {
   hackerMode: false,
   transitionAlpha: 0,
   tracePrompt: null,
+  algorithmBrief: {
+    title: "Binary Search",
+    rule: "Compare the middle value, then keep only the half where the target can still exist.",
+    detail: "Target 42 lives in a sorted signal. Every terminal shrinks the search window.",
+  },
   status: "playing",
   statusLine: "REACH THE EXIT FLAG",
   physics: {
@@ -274,6 +279,13 @@ export function CanvasPlatformer({
           <span><kbd>F</kbd> REDLINE</span>
         </div>
 
+        <aside className="algorithm-coach" aria-label="Current algorithm lesson">
+          <span>ALGORITHM COACH</span>
+          <strong>{ui.algorithmBrief.title}</strong>
+          <p>{ui.algorithmBrief.rule}</p>
+          <small>{ui.algorithmBrief.detail}</small>
+        </aside>
+
         {ui.hackerMode && (
           <div className="hacker-overlay" role="dialog" aria-label="System Override">
             <div className="hacker-window">
@@ -326,6 +338,10 @@ export function CanvasPlatformer({
                         <span>BINARY TRACE</span>
                         <strong>TARGET {ui.tracePrompt.target}</strong>
                       </div>
+                      <p className="trace-rule">
+                        Binary search checks the middle value first. Choose the
+                        half where the target can still exist.
+                      </p>
                       <div className="trace-values">
                         {ui.tracePrompt.values.map((value) => (
                           <span
@@ -345,6 +361,10 @@ export function CanvasPlatformer({
                         <strong>{ui.tracePrompt.pivot}</strong>
                         <span>VS {ui.tracePrompt.target}</span>
                       </div>
+                      <p className="trace-hint">
+                        If target is bigger than pivot, choose HIGHER. If it is
+                        smaller, choose LOWER. If equal, LOCK.
+                      </p>
                       <div className="trace-actions">
                         {(
                           [

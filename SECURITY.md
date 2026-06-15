@@ -5,7 +5,7 @@ or receives plaintext passwords outside the Supabase authentication request.
 
 ## Data protection
 
-- The browser uses only the Supabase publishable key.
+- The browser uses only the Supabase project URL and browser-safe anon key.
 - No `service_role`, secret API key, or database password is shipped to users.
 - Row Level Security restricts every profile and progress row to its owner.
 - Anonymous visitors cannot read or write account data.

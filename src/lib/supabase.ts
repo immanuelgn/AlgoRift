@@ -1,15 +1,14 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabasePublishableKey =
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const supabaseBrowserKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 function getConfigurationError() {
   if (!supabaseUrl) {
-    return "The Supabase project URL is missing from the production environment.";
+    return "The Supabase project URL is missing from the environment.";
   }
-  if (!supabasePublishableKey) {
-    return "The Supabase publishable key is missing from the production environment.";
+  if (!supabaseBrowserKey) {
+    return "The Supabase anon key is missing from the environment.";
   }
 
   try {
@@ -25,10 +24,10 @@ function getConfigurationError() {
   }
 
   if (
-    !supabasePublishableKey.startsWith("sb_publishable_") &&
-    !supabasePublishableKey.startsWith("eyJ")
+    !supabaseBrowserKey.startsWith("eyJ") &&
+    !supabaseBrowserKey.startsWith("sb_publishable_")
   ) {
-    return "The browser key is not a Supabase publishable or legacy anon key.";
+    return "NEXT_PUBLIC_SUPABASE_ANON_KEY is not a valid browser-safe Supabase key.";
   }
 
   return "";
@@ -43,7 +42,7 @@ export function getSupabaseBrowserClient() {
   if (!isSupabaseConfigured) return null;
 
   if (!browserClient) {
-    browserClient = createClient(supabaseUrl!, supabasePublishableKey!, {
+    browserClient = createClient(supabaseUrl!, supabaseBrowserKey!, {
       auth: {
         autoRefreshToken: true,
         detectSessionInUrl: true,

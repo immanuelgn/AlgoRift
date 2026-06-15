@@ -19,6 +19,7 @@ import { Player } from "@/game/player";
 import { GameSound } from "@/game/sound";
 import {
   TileType,
+  type AlgorithmBrief,
   type CompletionPayload,
   type GameUiState,
   type InputAction,
@@ -53,6 +54,11 @@ type Particle = {
 
 const TRACE_VALUES = [3, 8, 12, 17, 23, 31, 42];
 const TRACE_TARGET = 42;
+const BINARY_SEARCH_BRIEF: AlgorithmBrief = {
+  title: "Binary Search",
+  rule: "Compare the middle value, then keep only the half where the target can still exist.",
+  detail: "Target 42 lives in a sorted signal. Every terminal asks you to shrink the search window.",
+};
 
 export class PlatformGameEngine {
   readonly input: InputController;
@@ -1114,6 +1120,7 @@ export class PlatformGameEngine {
       hackerMode: this.hackerMode,
       transitionAlpha: this.levelManager.transitionAlpha,
       tracePrompt: this.tracePrompt,
+      algorithmBrief: this.getAlgorithmBrief(),
       status: this.campaignComplete ? "complete" : "playing",
       statusLine: this.statusLine,
       physics: {
@@ -1123,5 +1130,14 @@ export class PlatformGameEngine {
         friction: physicsParams.friction,
       },
     });
+  }
+
+  private getAlgorithmBrief(): AlgorithmBrief {
+    if (!this.tracePrompt) return BINARY_SEARCH_BRIEF;
+    return {
+      title: "Binary Search Terminal",
+      rule: "Read the pivot. If the target is larger, keep the higher half. If it is smaller, keep the lower half.",
+      detail: `Active window: [${this.tracePrompt.values.join(", ")}]. Pivot ${this.tracePrompt.pivot}, target ${this.tracePrompt.target}.`,
+    };
   }
 }

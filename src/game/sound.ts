@@ -40,25 +40,88 @@ export class GameSound {
     if (!context) return;
 
     const now = context.currentTime;
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    const filter = context.createBiquadFilter();
+    const master = context.createGain();
+    const compressor = context.createDynamicsCompressor();
+    master.gain.setValueAtTime(0.0001, now);
+    master.gain.exponentialRampToValueAtTime(0.13, now + 0.035);
+    master.gain.exponentialRampToValueAtTime(0.085, now + 0.16);
+    master.gain.exponentialRampToValueAtTime(0.0001, now + 0.34);
+    compressor.threshold.setValueAtTime(-22, now);
+    compressor.knee.setValueAtTime(18, now);
+    compressor.ratio.setValueAtTime(7, now);
+    compressor.attack.setValueAtTime(0.003, now);
+    compressor.release.setValueAtTime(0.08, now);
+    master.connect(compressor);
+    compressor.connect(context.destination);
 
-    oscillator.type = "sawtooth";
-    oscillator.frequency.setValueAtTime(125, now);
-    oscillator.frequency.exponentialRampToValueAtTime(62, now + 0.24);
-    filter.type = "lowpass";
-    filter.frequency.setValueAtTime(1_900, now);
-    filter.frequency.exponentialRampToValueAtTime(420, now + 0.24);
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.07, now + 0.025);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
+    const sub = context.createOscillator();
+    const subGain = context.createGain();
+    sub.type = "sine";
+    sub.frequency.setValueAtTime(72, now);
+    sub.frequency.exponentialRampToValueAtTime(49, now + 0.31);
+    subGain.gain.setValueAtTime(0.42, now);
+    sub.connect(subGain);
+    subGain.connect(master);
 
-    oscillator.connect(filter);
-    filter.connect(gain);
-    gain.connect(context.destination);
-    oscillator.start(now);
-    oscillator.stop(now + 0.29);
+    const burn = context.createOscillator();
+    const burnFilter = context.createBiquadFilter();
+    burn.type = "sawtooth";
+    burn.frequency.setValueAtTime(188, now);
+    burn.frequency.linearRampToValueAtTime(214, now + 0.08);
+    burn.frequency.exponentialRampToValueAtTime(118, now + 0.32);
+    burn.detune.setValueAtTime(-9, now);
+    burnFilter.type = "bandpass";
+    burnFilter.frequency.setValueAtTime(1_250, now);
+    burnFilter.frequency.exponentialRampToValueAtTime(520, now + 0.32);
+    burnFilter.Q.setValueAtTime(4.2, now);
+    burn.connect(burnFilter);
+    burnFilter.connect(master);
+
+    const noiseSource = context.createBufferSource();
+    const noiseFilter = context.createBiquadFilter();
+    const noiseGain = context.createGain();
+    noiseSource.buffer = this.createNoiseBuffer(context, 0.34);
+    noiseFilter.type = "bandpass";
+    noiseFilter.frequency.setValueAtTime(2_900, now);
+    noiseFilter.frequency.exponentialRampToValueAtTime(860, now + 0.3);
+    noiseFilter.Q.setValueAtTime(7.5, now);
+    noiseGain.gain.setValueAtTime(0.0001, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.34, now + 0.026);
+    noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
+    noiseSource.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(master);
+
+    const charge = context.createOscillator();
+    const chargeGain = context.createGain();
+    charge.type = "triangle";
+    charge.frequency.setValueAtTime(660, now);
+    charge.frequency.exponentialRampToValueAtTime(1_380, now + 0.055);
+    chargeGain.gain.setValueAtTime(0.0001, now);
+    chargeGain.gain.exponentialRampToValueAtTime(0.08, now + 0.02);
+    chargeGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.075);
+    charge.connect(chargeGain);
+    chargeGain.connect(master);
+
+    sub.start(now);
+    burn.start(now);
+    noiseSource.start(now);
+    charge.start(now);
+    sub.stop(now + 0.35);
+    burn.stop(now + 0.35);
+    noiseSource.stop(now + 0.35);
+    charge.stop(now + 0.09);
+  }
+
+  private createNoiseBuffer(context: AudioContext, duration: number) {
+    const frameCount = Math.ceil(context.sampleRate * duration);
+    const buffer = context.createBuffer(1, frameCount, context.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let index = 0; index < frameCount; index += 1) {
+      const fade = 1 - index / frameCount;
+      data[index] = (Math.random() * 2 - 1) * fade;
+    }
+    return buffer;
   }
 
   private tone(

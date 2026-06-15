@@ -76,6 +76,12 @@ export type TracePrompt = {
   rejected: TraceDirection | null;
 };
 
+export type AlgorithmBrief = {
+  title: string;
+  rule: string;
+  detail: string;
+};
+
 export type GameUiState = {
   levelIndex: number;
   levelCount: number;
@@ -88,6 +94,7 @@ export type GameUiState = {
   hackerMode: boolean;
   transitionAlpha: number;
   tracePrompt: TracePrompt | null;
+  algorithmBrief: AlgorithmBrief;
   status: "playing" | "complete";
   statusLine: string;
   physics: Pick<
