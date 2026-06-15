@@ -1,7 +1,24 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseBrowserKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+function normalizePublicEnv(value: string | undefined) {
+  if (!value) return undefined;
+  let normalized = value.trim();
+  if (
+    (normalized.startsWith("\"") && normalized.endsWith("\"")) ||
+    (normalized.startsWith("'") && normalized.endsWith("'"))
+  ) {
+    normalized = normalized.slice(1, -1).trim();
+  }
+  return normalized
+    .replace(/^\uFEFF/, "")
+    .replace(/^\u00EF\u00BB\u00BF/, "")
+    .trim();
+}
+
+const supabaseUrl = normalizePublicEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
+const supabaseBrowserKey = normalizePublicEnv(
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+);
 
 function getConfigurationError() {
   if (!supabaseUrl) {
