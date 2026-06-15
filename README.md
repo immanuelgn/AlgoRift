@@ -17,10 +17,11 @@ Level 1, **Binary Blaster**, teaches binary search through a complete game loop:
 
 - Learn the sorted-array requirement, midpoint formula, and search-space rule.
 - Guide Nova through a camera-following side-scrolling course.
-- Run, use forgiving forward jumps, collect data coins, and reach checkpoints.
+- Run through a longer course, jump bugs and pipes, and collect data coins.
+- Pause once at a teaching checkpoint, then carry the search into the boss arena.
 - Calculate each midpoint without a highlighted answer.
 - Receive precise teaching feedback after an incorrect choice.
-- Charge Redline Vision by making two correct midpoint decisions.
+- Reveal Redline Vision at the checkpoint and charge it during the boss fight.
 - Fire the earned power during the final boss encounter.
 - Earn XP and save progress locally or to a secure account.
 
@@ -30,9 +31,9 @@ supported. Redline Vision is an original audiovisual effect built with CSS and
 the Web Audio API. It never highlights an answer, removes a learning step, or
 replaces the player's calculation.
 
-The lesson introduces plain-language terms first, demonstrates the first middle
-calculation, asks the player to solve the second, and reinforces the final
-decision during the boss encounter.
+The lesson introduces plain-language terms first, then keeps most of the course
+focused on platforming. One midpoint is taught at the checkpoint; the remaining
+two decisions become phases of the final boss encounter.
 
 ## Accounts and progress
 

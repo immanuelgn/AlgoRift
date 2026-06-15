@@ -69,10 +69,19 @@ type BattleState = {
 const STORAGE_KEY = "algorift-progress-v2";
 const VALUES = [3, 8, 12, 17, 23, 31, 42];
 const TARGET = 42;
-const GATE_POSITIONS = [29, 54, 79];
-const OBSTACLE_POSITIONS = [17, 42, 67];
-const DATA_COIN_POSITIONS = [10.5, 35.5, 59.5];
-const POWER_UP_POSITION = 61.5;
+const GATE_POSITIONS = [36, 88, 88];
+const COURSE_OBSTACLES = [
+  { position: 14, type: "bug" },
+  { position: 23, type: "bug" },
+  { position: 29, type: "pipe" },
+  { position: 46, type: "bug" },
+  { position: 54, type: "pipe" },
+  { position: 62, type: "bug" },
+  { position: 70, type: "bug" },
+  { position: 78, type: "pipe" },
+] as const;
+const DATA_COIN_POSITIONS = [9, 17.5, 21, 27, 32.5, 43, 49, 57, 65, 73, 80.5, 84];
+const POWER_UP_POSITION = 67;
 const DEFAULT_PROGRESS: PlayerProgress = {
   completedLevel: 0,
   xp: 0,
@@ -465,6 +474,7 @@ export function AlgoRift() {
   const [jumping, setJumping] = useState(false);
   const [runnerMoving, setRunnerMoving] = useState(false);
   const [collectedCoins, setCollectedCoins] = useState<number[]>([]);
+  const [clearedObstacles, setClearedObstacles] = useState<number[]>([]);
   const [obstacleBump, setObstacleBump] = useState(false);
   const [atGate, setAtGate] = useState(false);
   const [powerUpCollected, setPowerUpCollected] = useState(false);
@@ -692,15 +702,16 @@ export function AlgoRift() {
   const currentSlide = lessonSlides[lessonStep];
   const currentRound = Math.min(battle.correctShots + 1, 3);
   const midpointEquation = `floor((${battle.low} + ${battle.high}) / 2)`;
-  const cameraOffset = Math.max(0, Math.min(25, (runnerX - 20) * 0.44));
+  const cameraOffset = Math.max(0, Math.min(64, (runnerX - 18) * 0.9));
+  const levelProgress = Math.round(Math.min(100, (runnerX / 88) * 100));
   const coachTitle = !atGate
-    ? currentRound === 1
-      ? "Run right. Jump through the bug."
-      : `Checkpoint ${currentRound} is ahead.`
+    ? battle.correctShots === 0
+      ? "Run right. The first checkpoint is ahead."
+      : "Long run to the boss. Keep your momentum."
     : currentRound === 1
       ? "Let us solve the first one together."
       : currentRound === 2
-        ? "Your turn: find the new middle."
+        ? "Boss phase 1: find the new middle."
         : "Only one possible value remains.";
 
   const eliminated = useMemo(
@@ -735,6 +746,7 @@ export function AlgoRift() {
     setJumping(false);
     setRunnerMoving(false);
     setCollectedCoins([]);
+    setClearedObstacles([]);
     setObstacleBump(false);
     setAtGate(false);
     setPowerUpCollected(false);
@@ -765,7 +777,7 @@ export function AlgoRift() {
 
   function collectPowerUpBetween(current: number, next: number) {
     if (
-      battle.correctShots === 2 &&
+      battle.correctShots >= 1 &&
       !powerUpCollected &&
       current < POWER_UP_POSITION &&
       next >= POWER_UP_POSITION - 1.5
@@ -773,7 +785,7 @@ export function AlgoRift() {
       setPowerUpCollected(true);
       setPowerUpBurst(true);
       setFeedback(
-        "Redline Vision collected. Your first two correct middle choices charged it. Solve the last checkpoint to fire it.",
+        "Redline Core collected. Your first correct middle choice unlocked it. One more boss decision will fully charge it.",
       );
       playTone(soundOn, 420, 0.08);
       window.setTimeout(() => playTone(soundOn, 680, 0.12), 90);
@@ -800,14 +812,18 @@ export function AlgoRift() {
 
       const stage = Math.min(battle.correctShots, GATE_POSITIONS.length - 1);
       const gate = GATE_POSITIONS[stage];
-      const obstacle = OBSTACLE_POSITIONS[stage];
-      const next = Math.min(gate, current + 3.5);
-      const crossingObstacle = current < obstacle && next >= obstacle - 1.5;
+      const next = Math.min(gate, current + 2.8);
+      const nextObstacleIndex = COURSE_OBSTACLES.findIndex(
+        (obstacle, index) =>
+          !clearedObstacles.includes(index) &&
+          current < obstacle.position &&
+          next >= obstacle.position - 1.2,
+      );
 
-      if (crossingObstacle && !jumpingRef.current) {
+      if (nextObstacleIndex >= 0 && !jumpingRef.current) {
         setObstacleBump(true);
         setFeedback(
-          "The bug blocks the path. Press Space or the Jump Forward button, then keep moving right.",
+          "Obstacle ahead. Jump over it or stomp the bug, then keep running right.",
         );
         playTone(soundOn, 135, 0.12);
         window.setTimeout(() => setObstacleBump(false), 320);
@@ -838,15 +854,31 @@ export function AlgoRift() {
     setRunnerX((current) => {
       const stage = Math.min(battle.correctShots, GATE_POSITIONS.length - 1);
       const gate = GATE_POSITIONS[stage];
-      const obstacle = OBSTACLE_POSITIONS[stage];
-      const distanceToObstacle = obstacle - current;
-      const next =
-        distanceToObstacle >= -2 && distanceToObstacle <= 14
-          ? Math.min(gate, obstacle + 4.5)
-          : Math.min(gate, current + 3.5);
+      const obstacleIndex = COURSE_OBSTACLES.findIndex(
+        (obstacle, index) =>
+          !clearedObstacles.includes(index) &&
+          obstacle.position >= current - 2 &&
+          obstacle.position <= current + 13,
+      );
+      const obstacle =
+        obstacleIndex >= 0 ? COURSE_OBSTACLES[obstacleIndex] : null;
+      const next = obstacle
+        ? Math.min(gate, obstacle.position + 3.8)
+        : Math.min(gate, current + 4.2);
 
       collectCoinsBetween(current, next);
       collectPowerUpBetween(current, next);
+      if (obstacle && obstacleIndex >= 0) {
+        setClearedObstacles((items) =>
+          items.includes(obstacleIndex) ? items : [...items, obstacleIndex],
+        );
+        setFeedback(
+          obstacle.type === "bug"
+            ? "Bug stomped. Nice jump. Keep heading right."
+            : "Pipe cleared. The boss arena is farther to the right.",
+        );
+        playTone(soundOn, obstacle.type === "bug" ? 230 : 390, 0.1);
+      }
       if (next >= gate - 0.5) {
         setAtGate(true);
         setFeedback(
@@ -950,10 +982,10 @@ export function AlgoRift() {
         }));
         setFeedback(
           nextShots === 2
-            ? `${midpointValue} is too small, so 42 must be to the right. The left side disappears, and your Redline Core is ready ahead.`
-            : `${midpointValue} is too small, so 42 must be to the right. The left side disappears. Keep running.`,
+            ? `${midpointValue} is too small, so only the value to its right remains. Redline Vision is fully charged. Make the final choice.`
+            : `${midpointValue} is too small, so 42 must be to the right. The left side disappears. Checkpoint cleared. Enjoy the long run to the boss.`,
         );
-        setAtGate(false);
+        setAtGate(nextShots >= 2);
       } else {
         const nextHigh = midpoint - 1;
         setBattle((current) => ({
@@ -1534,9 +1566,9 @@ export function AlgoRift() {
               </span>
               <h2>Redline Vision rewards correct reasoning.</h2>
               <p>
-                Solve the first two binary-search midpoints to charge the core,
-                collect it in the platform section, then solve the final active
-                range to release a cinematic heat beam.
+                Clear the first search checkpoint to reveal the core, collect it
+                during the long run, then finish charging it in the boss fight
+                to release a cinematic heat beam.
               </p>
               <div className="power-rule">
                 <Shield size={18} />
@@ -1721,22 +1753,34 @@ export function AlgoRift() {
               <strong>
                 {isHeatVisionFiring
                   ? "FIRING"
-                  : powerUpCollected
+                  : powerUpCollected && battle.correctShots >= 2
                     ? "READY"
-                    : battle.correctShots >= 2
+                    : powerUpCollected
+                      ? "CORE COLLECTED"
+                      : battle.correctShots >= 1
                       ? "CORE AHEAD"
-                      : `${battle.correctShots}/2 CHARGE`}
+                      : "LOCKED"}
               </strong>
             </div>
 
             <div className="stage-coach" aria-live="polite">
-              <span>CHECKPOINT {currentRound} OF 3</span>
+              <span>
+                {atGate
+                  ? currentRound === 1
+                    ? "LEARNING CHECKPOINT"
+                    : `BOSS PHASE ${currentRound - 1} OF 2`
+                  : "COURSE PROGRESS"}
+              </span>
               <strong>{coachTitle}</strong>
               <small>
                 {atGate
                   ? "Choose from the learning panel directly below."
-                  : "Use D or Right Arrow to run. Space jumps forward."}
+                  : "Use D or Right Arrow to run. Space jumps over obstacles."}
               </small>
+              <div className="level-progress" aria-label={`${levelProgress}% through the course`}>
+                <i style={{ width: `${levelProgress}%` }} />
+                <b>{levelProgress}%</b>
+              </div>
             </div>
 
             <div className="stage-controls" aria-label="Platform controls">
@@ -1794,7 +1838,7 @@ export function AlgoRift() {
               <span className="character-name">{username || "NOVA"}</span>
             </div>
 
-            {battle.correctShots === 2 && !powerUpCollected && (
+            {battle.correctShots >= 1 && !powerUpCollected && (
               <div
                 className="redline-pickup"
                 style={{ left: `${POWER_UP_POSITION}%` }}
@@ -1809,19 +1853,29 @@ export function AlgoRift() {
               </div>
             )}
 
-            {OBSTACLE_POSITIONS.map((position, index) => (
+            {COURSE_OBSTACLES.map((obstacle, index) => (
               <div
                 className={[
-                  "bug-obstacle",
-                  index < battle.correctShots ? "obstacle-cleared" : "",
+                  "course-obstacle",
+                  obstacle.type === "bug" ? "bug-obstacle" : "pipe-obstacle",
+                  clearedObstacles.includes(index) ? "obstacle-cleared" : "",
                 ].join(" ")}
-                key={position}
-                style={{ left: `${position}%` }}
+                key={`${obstacle.type}-${obstacle.position}`}
+                style={{ left: `${obstacle.position}%` }}
                 aria-hidden="true"
               >
-                <span className="bug-eye" />
-                <span className="bug-eye" />
-                <small>BUG</small>
+                {obstacle.type === "bug" ? (
+                  <>
+                    <span className="bug-eye" />
+                    <span className="bug-eye" />
+                    <small>BUG</small>
+                  </>
+                ) : (
+                  <>
+                    <span className="pipe-rim" />
+                    <small>PIPE</small>
+                  </>
+                )}
               </div>
             ))}
 
@@ -1842,15 +1896,15 @@ export function AlgoRift() {
               {isShooting && (
                 <span
                   className="energy-shot"
-                  style={{ left: `${Math.min(runnerX + 5, 82)}%` }}
+                  style={{ left: `${Math.min(runnerX + 5, 92)}%` }}
                 />
               )}
               {isHeatVisionFiring && (
                 <span
                   className="heat-vision-beam"
                   style={{
-                    left: `${Math.min(runnerX + 4, 78)}%`,
-                    width: `${Math.max(10, 87 - (runnerX + 4))}%`,
+                    left: `${Math.min(runnerX + 4, 90)}%`,
+                    width: `${Math.max(8, 98 - (runnerX + 4))}%`,
                   }}
                 >
                   <i className="beam-core" />
@@ -1882,9 +1936,19 @@ export function AlgoRift() {
               <div>
                 <span className="section-label">
                   <Target size={14} />{" "}
-                  {atGate ? `Learning checkpoint ${currentRound}` : "Keep moving"}
+                  {atGate
+                    ? currentRound === 1
+                      ? "Learning checkpoint"
+                      : `Boss phase ${currentRound - 1}`
+                    : "Keep moving"}
                 </span>
-                <h2>{atGate ? coachTitle : "Run to the next checkpoint."}</h2>
+                <h2>
+                  {atGate
+                    ? coachTitle
+                    : battle.correctShots === 0
+                      ? "Run to the learning checkpoint."
+                      : "Run to the boss arena."}
+                </h2>
                 <p>
                   {atGate ? (
                     <>
@@ -1893,7 +1957,11 @@ export function AlgoRift() {
                       contain 42.
                     </>
                   ) : (
-                    <>Jumping moves Nova forward too, so the bug cannot trap you.</>
+                    <>
+                      Run, collect data coins, and jump over bugs or pipes. Only
+                      the checkpoint and boss pause the action for a search
+                      decision.
+                    </>
                   )}
                 </p>
               </div>
@@ -1974,7 +2042,8 @@ export function AlgoRift() {
                 <div>
                   <strong>Movement goal</strong>
                   <span>
-                    Run right, then use Jump Forward when a red bug blocks Nova.
+                    Run right and jump over obstacles. Reach the checkpoint, then
+                    keep your momentum all the way to the boss.
                   </span>
                 </div>
                 <kbd>D / →</kbd>
