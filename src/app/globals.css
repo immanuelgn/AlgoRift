@@ -4239,3 +4239,790 @@ a:focus-visible {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Canvas platformer */
+
+.canvas-game-view {
+  background: #080d1b;
+  min-height: calc(100vh - 76px);
+  padding: 18px;
+}
+
+.canvas-game-toolbar {
+  align-items: center;
+  color: #f7f7ef;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: 1fr auto 1fr;
+  margin: 0 auto 12px;
+  max-width: 1560px;
+}
+
+.canvas-game-toolbar > div {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  font-family: Consolas, monospace;
+  gap: 2px;
+  letter-spacing: 0.12em;
+}
+
+.canvas-game-toolbar > div span {
+  color: #67e8f9;
+  font-size: 10px;
+}
+
+.canvas-game-toolbar > div strong {
+  font-size: 13px;
+  text-transform: uppercase;
+}
+
+.canvas-game-toolbar button {
+  align-items: center;
+  background: #141b31;
+  border: 2px solid #39415e;
+  border-radius: 10px;
+  color: #f7f7ef;
+  cursor: pointer;
+  display: flex;
+  font-size: 11px;
+  font-weight: 900;
+  gap: 7px;
+  justify-self: start;
+  padding: 10px 13px;
+}
+
+.canvas-game-toolbar button:last-child {
+  justify-self: end;
+}
+
+.canvas-shell {
+  background: #0c1224;
+  border: 3px solid #11162d;
+  border-radius: 18px;
+  box-shadow: 0 16px 0 rgba(0, 0, 0, 0.28);
+  margin: 0 auto;
+  max-width: 1560px;
+  min-height: 560px;
+  overflow: hidden;
+  position: relative;
+}
+
+.platform-canvas {
+  display: block;
+  height: min(72vh, 760px);
+  min-height: 560px;
+  touch-action: none;
+  width: 100%;
+}
+
+.canvas-hud {
+  align-items: center;
+  background: rgba(8, 13, 27, 0.88);
+  border: 2px solid rgba(103, 232, 249, 0.4);
+  border-radius: 14px;
+  color: #f8f8ef;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 1fr auto 1fr;
+  left: 18px;
+  padding: 10px 14px;
+  position: absolute;
+  right: 18px;
+  top: 16px;
+  z-index: 4;
+}
+
+.canvas-hud-player,
+.canvas-resources {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.canvas-hud-player > span,
+.canvas-objective small {
+  color: #67e8f9;
+  font-family: Consolas, monospace;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.canvas-hud-player > div {
+  color: #ff425f;
+  display: flex;
+  gap: 3px;
+}
+
+.canvas-objective {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.canvas-objective strong {
+  background: #ffd84d;
+  border: 2px solid #11162d;
+  border-radius: 7px;
+  color: #11162d;
+  font-family: Consolas, monospace;
+  font-size: 13px;
+  padding: 5px 7px;
+}
+
+.canvas-objective > span {
+  font-family: Consolas, monospace;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.canvas-resources {
+  justify-content: flex-end;
+}
+
+.canvas-resources > span {
+  align-items: center;
+  background: #171f38;
+  border: 1px solid #3d4769;
+  border-radius: 7px;
+  display: flex;
+  font-family: Consolas, monospace;
+  font-size: 9px;
+  font-weight: 900;
+  gap: 5px;
+  padding: 7px 9px;
+}
+
+.canvas-resources .resource-ready {
+  border-color: #ff425f;
+  color: #ff7b8e;
+  box-shadow: 0 0 16px rgba(255, 66, 95, 0.22);
+}
+
+.canvas-controls {
+  align-items: flex-end;
+  bottom: 20px;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  left: 20px;
+  pointer-events: none;
+  position: absolute;
+  right: 20px;
+  z-index: 5;
+}
+
+.canvas-controls button {
+  align-items: center;
+  background: rgba(247, 247, 239, 0.94);
+  border: 3px solid #11162d;
+  border-radius: 13px;
+  box-shadow: 0 5px 0 rgba(17, 22, 45, 0.45);
+  cursor: pointer;
+  display: flex;
+  font-family: Consolas, monospace;
+  font-size: 9px;
+  font-weight: 900;
+  gap: 6px;
+  justify-content: center;
+  min-height: 54px;
+  min-width: 62px;
+  padding: 9px 12px;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+}
+
+.canvas-controls button:active {
+  box-shadow: 0 1px 0 rgba(17, 22, 45, 0.45);
+  transform: translateY(4px);
+}
+
+.canvas-controls button:disabled {
+  cursor: not-allowed;
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+
+.canvas-move-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.canvas-controls .override-control {
+  background: #11162d;
+  border-color: #67e8f9;
+  color: #67e8f9;
+  margin-left: auto;
+}
+
+.canvas-controls .fire-canvas-control {
+  background: #ff425f;
+  color: #fff;
+}
+
+.canvas-controls .jump-canvas-control {
+  background: #ffd84d;
+  min-width: 84px;
+}
+
+.jump-arrow {
+  transform: rotate(-90deg);
+}
+
+.desktop-command-strip {
+  align-items: center;
+  background: rgba(8, 13, 27, 0.84);
+  border: 1px solid rgba(103, 232, 249, 0.32);
+  border-radius: 9px;
+  color: #bdc7da;
+  display: flex;
+  font-family: Consolas, monospace;
+  font-size: 8px;
+  gap: 18px;
+  left: 50%;
+  padding: 8px 11px;
+  position: absolute;
+  top: 92px;
+  transform: translateX(-50%);
+  z-index: 4;
+}
+
+@media (min-width: 761px) {
+  .canvas-controls {
+    display: none;
+  }
+}
+
+.desktop-command-strip span {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.desktop-command-strip kbd {
+  background: #f7f7ef;
+  border-radius: 4px;
+  color: #11162d;
+  font-size: 8px;
+  padding: 3px 5px;
+}
+
+.hacker-overlay {
+  align-items: center;
+  backdrop-filter: blur(5px);
+  background: rgba(4, 8, 20, 0.64);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 76px 24px 92px;
+  position: absolute;
+  z-index: 12;
+}
+
+.hacker-window {
+  background: #080d1b;
+  border: 2px solid #67e8f9;
+  border-radius: 14px;
+  box-shadow:
+    0 0 0 5px rgba(103, 232, 249, 0.1),
+    0 24px 80px rgba(0, 0, 0, 0.5);
+  color: #eefef8;
+  max-width: 850px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.hacker-window-bar {
+  align-items: center;
+  background: #10182d;
+  border-bottom: 1px solid #33425e;
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 14px;
+}
+
+.hacker-window-bar > div {
+  align-items: center;
+  display: flex;
+  font-family: Consolas, monospace;
+  gap: 9px;
+}
+
+.hacker-window-bar span {
+  color: #67e8f9;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.hacker-window-bar b {
+  background: #a7f35b;
+  border-radius: 5px;
+  color: #10152b;
+  font-size: 8px;
+  padding: 5px 7px;
+}
+
+.hacker-window-bar button {
+  background: transparent;
+  border: 0;
+  color: #f7f7ef;
+  cursor: pointer;
+  display: grid;
+  padding: 5px;
+  place-items: center;
+}
+
+.hacker-window-content {
+  display: grid;
+  grid-template-columns: 1fr 1.08fr;
+}
+
+.physics-console,
+.trace-console {
+  min-height: 330px;
+  padding: 22px;
+}
+
+.physics-console {
+  border-right: 1px solid #33425e;
+}
+
+.console-heading {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.console-heading > div {
+  display: flex;
+  flex-direction: column;
+  font-family: Consolas, monospace;
+  gap: 3px;
+}
+
+.console-heading span,
+.trace-heading span,
+.free-tune-panel > span {
+  color: #67e8f9;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+}
+
+.console-heading strong {
+  font-size: 13px;
+}
+
+.physics-console label {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 96px 1fr 48px;
+  margin-top: 17px;
+}
+
+.physics-console label > span,
+.physics-console output {
+  font-family: Consolas, monospace;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.physics-console output {
+  background: #131d34;
+  border: 1px solid #3d4c6a;
+  border-radius: 5px;
+  color: #a7f35b;
+  padding: 5px;
+  text-align: center;
+}
+
+.physics-console input {
+  accent-color: #67e8f9;
+  cursor: pointer;
+  width: 100%;
+}
+
+.trace-console {
+  background:
+    linear-gradient(rgba(103, 232, 249, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(103, 232, 249, 0.035) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.trace-heading {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.trace-heading strong {
+  color: #ffd84d;
+  font-family: Consolas, monospace;
+  font-size: 13px;
+}
+
+.trace-values {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin: 34px 0 20px;
+}
+
+.trace-values span {
+  align-items: center;
+  background: #131d34;
+  border: 2px solid #394766;
+  border-radius: 7px;
+  display: flex;
+  font-family: Consolas, monospace;
+  font-size: 11px;
+  font-weight: 900;
+  height: 38px;
+  justify-content: center;
+  width: 38px;
+}
+
+.trace-values .trace-pivot {
+  background: #ffd84d;
+  border-color: #f7f7ef;
+  color: #11162d;
+  box-shadow: 0 0 18px rgba(255, 216, 77, 0.3);
+}
+
+.trace-readout {
+  align-items: baseline;
+  display: flex;
+  font-family: Consolas, monospace;
+  gap: 9px;
+  justify-content: center;
+}
+
+.trace-readout span {
+  color: #8fa0bd;
+  font-size: 9px;
+}
+
+.trace-readout strong {
+  color: #ffd84d;
+  font-size: 30px;
+}
+
+.trace-actions {
+  display: grid;
+  gap: 9px;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 28px;
+}
+
+.trace-actions button {
+  background: #131d34;
+  border: 2px solid #52617e;
+  border-radius: 8px;
+  color: #f7f7ef;
+  cursor: pointer;
+  font-family: Consolas, monospace;
+  font-size: 10px;
+  font-weight: 900;
+  min-height: 45px;
+}
+
+.trace-actions button:hover {
+  border-color: #a7f35b;
+  color: #a7f35b;
+}
+
+.trace-actions .trace-rejected {
+  animation: hackerReject 0.22s linear 2;
+  background: rgba(255, 66, 95, 0.18);
+  border-color: #ff425f;
+  color: #ff788b;
+}
+
+.free-tune-panel {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: center;
+  text-align: center;
+}
+
+.free-tune-panel strong {
+  font-family: Consolas, monospace;
+  font-size: 20px;
+  margin: 12px 0 25px;
+}
+
+.free-tune-panel code {
+  color: #a7f35b;
+  font-size: 11px;
+  margin-top: 25px;
+}
+
+.signal-bars {
+  align-items: flex-end;
+  display: flex;
+  gap: 7px;
+  height: 70px;
+}
+
+.signal-bars i {
+  animation: signalPulse 0.7s ease-in-out infinite alternate;
+  background: #67e8f9;
+  display: block;
+  height: 30%;
+  width: 11px;
+}
+
+.signal-bars i:nth-child(2) { animation-delay: 0.12s; height: 55%; }
+.signal-bars i:nth-child(3) { animation-delay: 0.24s; height: 85%; }
+.signal-bars i:nth-child(4) { animation-delay: 0.36s; height: 62%; }
+.signal-bars i:nth-child(5) { animation-delay: 0.48s; height: 42%; }
+
+.canvas-complete {
+  align-items: center;
+  background: rgba(4, 8, 20, 0.86);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 24px;
+  position: absolute;
+  z-index: 16;
+}
+
+.canvas-complete > div {
+  background: #fffdf3;
+  border: 4px solid #11162d;
+  border-radius: 18px;
+  box-shadow: 0 12px 0 rgba(0, 0, 0, 0.28);
+  max-width: 560px;
+  padding: 38px;
+  text-align: center;
+}
+
+.canvas-complete > div > span {
+  color: #6f56e8;
+  font-family: Consolas, monospace;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+}
+
+.canvas-complete h2 {
+  font-size: clamp(34px, 6vw, 58px);
+  letter-spacing: -0.05em;
+  margin: 12px 0;
+}
+
+.canvas-complete p {
+  color: #616a81;
+  line-height: 1.6;
+}
+
+.canvas-complete-stats {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 25px 0;
+}
+
+.canvas-complete-stats strong {
+  background: #11162d;
+  border-radius: 8px;
+  color: #ffd84d;
+  font-family: Consolas, monospace;
+  font-size: 10px;
+  padding: 12px 7px;
+}
+
+.canvas-complete button {
+  align-items: center;
+  background: #ffd84d;
+  border: 3px solid #11162d;
+  border-radius: 10px;
+  box-shadow: 0 5px 0 rgba(17, 22, 45, 0.2);
+  cursor: pointer;
+  display: inline-flex;
+  font-weight: 900;
+  gap: 8px;
+  padding: 13px 18px;
+}
+
+@keyframes hackerReject {
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+@keyframes signalPulse {
+  from { opacity: 0.35; transform: scaleY(0.65); }
+  to { opacity: 1; transform: scaleY(1); }
+}
+
+@media (max-width: 760px) {
+  .canvas-game-view {
+    min-height: calc(100vh - 66px);
+    padding: 0;
+  }
+
+  .canvas-game-toolbar {
+    background: #080d1b;
+    margin: 0;
+    min-height: 58px;
+    padding: 7px 10px;
+  }
+
+  .canvas-game-toolbar button {
+    font-size: 0;
+    min-height: 38px;
+    min-width: 38px;
+    padding: 8px;
+  }
+
+  .canvas-game-toolbar button svg {
+    margin: auto;
+  }
+
+  .canvas-shell {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    min-height: calc(100vh - 124px);
+  }
+
+  .platform-canvas {
+    height: calc(100vh - 124px);
+    min-height: 600px;
+  }
+
+  .canvas-hud {
+    gap: 7px;
+    grid-template-columns: auto 1fr auto;
+    left: 8px;
+    padding: 8px;
+    right: 8px;
+    top: 8px;
+  }
+
+  .canvas-hud-player > span,
+  .canvas-objective small {
+    display: none;
+  }
+
+  .canvas-hud-player {
+    gap: 2px;
+  }
+
+  .canvas-hud-player svg {
+    height: 14px;
+    width: 14px;
+  }
+
+  .canvas-objective {
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .canvas-objective > span {
+    font-size: 7px;
+    max-width: 150px;
+  }
+
+  .canvas-resources > span {
+    font-size: 0;
+    padding: 6px;
+  }
+
+  .canvas-resources > span:first-child {
+    font-size: 8px;
+  }
+
+  .canvas-controls {
+    bottom: 14px;
+    gap: 6px;
+    left: 9px;
+    right: 9px;
+  }
+
+  .canvas-controls button {
+    border-width: 2px;
+    min-height: 48px;
+    min-width: 50px;
+    padding: 7px;
+  }
+
+  .canvas-controls button span {
+    display: none;
+  }
+
+  .canvas-controls .jump-canvas-control {
+    min-width: 66px;
+  }
+
+  .canvas-controls .override-control {
+    margin-left: 0;
+  }
+
+  .desktop-command-strip {
+    display: none;
+  }
+
+  .hacker-overlay {
+    align-items: flex-start;
+    overflow-y: auto;
+    padding: 68px 10px 78px;
+  }
+
+  .hacker-window-content {
+    grid-template-columns: 1fr;
+  }
+
+  .physics-console,
+  .trace-console {
+    min-height: auto;
+    padding: 16px;
+  }
+
+  .physics-console {
+    border-bottom: 1px solid #33425e;
+    border-right: 0;
+  }
+
+  .physics-console label {
+    grid-template-columns: 82px 1fr 44px;
+    margin-top: 12px;
+  }
+
+  .trace-values {
+    gap: 4px;
+    margin: 22px 0 14px;
+  }
+
+  .trace-values span {
+    font-size: 9px;
+    height: 33px;
+    width: 33px;
+  }
+
+  .trace-actions {
+    margin-top: 18px;
+  }
+
+  .canvas-complete > div {
+    padding: 28px 18px;
+  }
+
+  .canvas-complete-stats {
+    grid-template-columns: 1fr;
+  }
+}

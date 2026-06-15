@@ -1,54 +1,51 @@
 "use client";
 
+import type { User } from "@supabase/supabase-js";
 import {
   ArrowLeft,
   ArrowRight,
-  BookOpen,
   Check,
-  ChevronRight,
-  Code2,
-  Compass,
-  Crosshair,
   Cloud,
   CloudOff,
+  Compass,
   Eye,
   EyeOff,
   Flame,
   Github,
-  Heart,
   Home,
   KeyRound,
-  Lightbulb,
   LockKeyhole,
   LogIn,
   LogOut,
   Mail,
   Map,
   Play,
-  RotateCcw,
   Save,
   Shield,
+  SlidersHorizontal,
   Sparkles,
   Target,
-  Trophy,
+  Terminal,
   UserRound,
   Volume2,
   VolumeX,
   Zap,
 } from "lucide-react";
-import type { User } from "@supabase/supabase-js";
 import {
   type FormEvent,
+  useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
+import { CanvasPlatformer } from "@/components/canvas-platformer";
 import {
   getSupabaseBrowserClient,
   isSupabaseConfigured,
+  supabaseConfigurationError,
 } from "@/lib/supabase";
 
-type View = "home" | "lesson" | "battle" | "world";
+type View = "home" | "battle" | "world";
 
 type PlayerProgress = {
   completedLevel: number;
@@ -56,34 +53,7 @@ type PlayerProgress = {
   redlineVisionUnlocked: boolean;
 };
 
-type BattleState = {
-  low: number;
-  high: number;
-  hearts: number;
-  correctShots: number;
-  status: "playing" | "won" | "lost";
-};
-
-type SearchDirection = "left" | "found" | "right";
-
 const STORAGE_KEY = "algorift-progress-v2";
-const VALUES = [3, 8, 12, 17, 23, 31, 42];
-const TARGET = 42;
-const GATE_POSITIONS = [36, 88];
-const COURSE_OBSTACLES = [
-  { position: 14, type: "bug" },
-  { position: 23, type: "bug" },
-  { position: 29, type: "pipe" },
-  { position: 46, type: "bug" },
-  { position: 54, type: "pipe" },
-  { position: 62, type: "bug" },
-  { position: 70, type: "bug" },
-  { position: 74, type: "bug" },
-  { position: 78, type: "pipe" },
-  { position: 82, type: "bug" },
-] as const;
-const DATA_COIN_POSITIONS = [9, 17.5, 21, 27, 32.5, 43, 49, 57, 65, 73, 80.5, 84];
-const POWER_UP_POSITION = 67;
 const DEFAULT_PROGRESS: PlayerProgress = {
   completedLevel: 0,
   xp: 0,
@@ -92,78 +62,39 @@ const DEFAULT_PROGRESS: PlayerProgress = {
 const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/;
 const PASSWORD_PATTERN = /^(?=.*[A-Za-z])(?=.*\d).{10,}$/;
 
-function getFriendlyAuthError(error: unknown) {
-  const message =
-    error instanceof Error
-      ? error.message
-      : "Authentication failed. Please try again.";
-  const normalized = message.toLowerCase();
-
-  if (normalized.includes("email address not authorized")) {
-    return "Cloud signup is temporarily unavailable while secure public email delivery is being connected. Guest saves still work on this device.";
-  }
-  if (normalized.includes("rate limit") || normalized.includes("too many requests")) {
-    return "Too many account requests were made recently. Wait a few minutes, then try again.";
-  }
-
-  return message;
-}
-
-const lessonSlides = [
-  {
-    number: "01",
-    eyebrow: "Rule 1: sort first",
-    title: "Put values in order.",
-    copy:
-      "Binary search works only when values go from smallest to largest. Order tells us which direction to search next.",
-    visual: "sorted",
-    note: "Simple idea: sorted values give us a useful left and right.",
-    plain: "Array = a list of values. Position = where a value sits in that list.",
-  },
-  {
-    number: "02",
-    eyebrow: "Rule 2: check, compare, move",
-    title: "The middle tells you the direction.",
-    copy:
-      "Check the middle value. If the target is larger, move right. If it is smaller, move left. Then repeat with the remaining half.",
-    visual: "midpoint",
-    note: "You will make only two quick direction calls during the level.",
-    plain: "Example: 17 is smaller than 42, so keep the values to the right.",
-  },
-];
-
 const worlds = [
   {
     level: 1,
-    title: "Binary Blaster",
-    realm: "Search Plains",
-    topics: "Arrays · Indexes · Binary Search",
+    title: "Binary Override",
+    realm: "Kernel Frontier",
+    topics: "Binary Trace · Physics Tuning · Momentum",
     color: "sun",
-    description: "Aim at the midpoint and cut the search space in half.",
+    description:
+      "Breach three platforming sectors and narrow a live signal window.",
   },
   {
     level: 2,
-    title: "Sort Sprint",
-    realm: "Sort Summit",
+    title: "Sort Circuit",
+    realm: "Packet Foundry",
     topics: "Bubble · Merge · Quick Sort",
     color: "sky",
-    description: "Race disorder by swapping, splitting, and merging.",
+    description: "Reorder hostile packets while the factory keeps moving.",
   },
   {
     level: 3,
-    title: "Stack Tower",
-    realm: "Memory Mines",
+    title: "Stack Breach",
+    realm: "Memory Vault",
     topics: "Stacks · Queues · Hash Maps",
     color: "mint",
-    description: "Build with LIFO, defend with FIFO, and unlock instant lookup.",
+    description: "Route processes through a layered security tower.",
   },
   {
     level: 4,
-    title: "Tree Climber",
-    realm: "Tree Canopy",
+    title: "Tree Runner",
+    realm: "Branch Network",
     topics: "Trees · BST · Traversal",
     color: "leaf",
-    description: "Climb branches using structure, order, and recursion.",
+    description: "Climb a branching world without losing the active route.",
   },
   {
     level: 5,
@@ -171,35 +102,25 @@ const worlds = [
     realm: "Graph Citadel",
     topics: "BFS · DFS · Dijkstra",
     color: "violet",
-    description: "Navigate networks and defeat the shortest-path boss.",
+    description: "Race a network boss through weighted paths.",
   },
   {
     level: 6,
-    title: "Choice Bandit",
-    realm: "Greedy Dunes",
+    title: "Greedy Run",
+    realm: "Bandwidth Dunes",
     topics: "Greedy · Intervals",
     color: "gold",
-    description: "Make the strongest local move without losing the mission.",
+    description: "Commit to local openings while the route collapses.",
   },
   {
     level: 7,
-    title: "Echo Forge",
-    realm: "Dynamic Forge",
+    title: "Echo Kernel",
+    realm: "Dynamic Core",
     topics: "Dynamic Programming",
     color: "rose",
-    description: "Store past answers and craft solutions from smaller wins.",
+    description: "Cache past states and rebuild a damaged system.",
   },
 ];
-
-function getInitialBattle(): BattleState {
-  return {
-    low: 0,
-    high: VALUES.length - 1,
-    hearts: 3,
-    correctShots: 0,
-    status: "playing",
-  };
-}
 
 function normalizeProgress(value: Partial<PlayerProgress> | null | undefined) {
   return {
@@ -212,121 +133,42 @@ function normalizeProgress(value: Partial<PlayerProgress> | null | undefined) {
   };
 }
 
-function playTone(enabled: boolean, frequency: number, duration = 0.12) {
-  if (!enabled || typeof window === "undefined") return;
-  const AudioContextClass =
-    window.AudioContext ||
-    (
-      window as typeof window & {
-        webkitAudioContext?: typeof AudioContext;
-      }
-    ).webkitAudioContext;
-  if (!AudioContextClass) return;
+function getFriendlyAuthError(error: unknown) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : "Authentication failed. Please try again.";
+  const normalized = message.toLowerCase();
 
-  const context = new AudioContextClass();
-  const oscillator = context.createOscillator();
-  const gain = context.createGain();
-  oscillator.type = "square";
-  oscillator.frequency.value = frequency;
-  gain.gain.setValueAtTime(0.05, context.currentTime);
-  gain.gain.exponentialRampToValueAtTime(
-    0.001,
-    context.currentTime + duration,
-  );
-  oscillator.connect(gain);
-  gain.connect(context.destination);
-  oscillator.start();
-  oscillator.stop(context.currentTime + duration);
-  oscillator.addEventListener("ended", () => void context.close());
-}
-
-function playHeatVisionSound(enabled: boolean) {
-  if (!enabled || typeof window === "undefined") return;
-  const AudioContextClass =
-    window.AudioContext ||
-    (
-      window as typeof window & {
-        webkitAudioContext?: typeof AudioContext;
-      }
-    ).webkitAudioContext;
-  if (!AudioContextClass) return;
-
-  const context = new AudioContextClass();
-  const now = context.currentTime;
-  const master = context.createGain();
-  const compressor = context.createDynamicsCompressor();
-  const filter = context.createBiquadFilter();
-  const rumble = context.createOscillator();
-  const beam = context.createOscillator();
-  const harmonic = context.createOscillator();
-
-  master.gain.setValueAtTime(0.0001, now);
-  master.gain.exponentialRampToValueAtTime(0.15, now + 0.08);
-  master.gain.setValueAtTime(0.15, now + 0.72);
-  master.gain.exponentialRampToValueAtTime(0.0001, now + 1.05);
-
-  filter.type = "lowpass";
-  filter.frequency.setValueAtTime(900, now);
-  filter.frequency.exponentialRampToValueAtTime(4300, now + 0.28);
-  filter.Q.value = 7;
-
-  compressor.threshold.value = -18;
-  compressor.knee.value = 12;
-  compressor.ratio.value = 8;
-  compressor.attack.value = 0.003;
-  compressor.release.value = 0.2;
-
-  rumble.type = "sawtooth";
-  rumble.frequency.setValueAtTime(48, now);
-  rumble.frequency.exponentialRampToValueAtTime(72, now + 0.4);
-
-  beam.type = "sawtooth";
-  beam.frequency.setValueAtTime(150, now);
-  beam.frequency.exponentialRampToValueAtTime(720, now + 0.24);
-  beam.frequency.setValueAtTime(690, now + 0.75);
-
-  harmonic.type = "triangle";
-  harmonic.frequency.setValueAtTime(310, now);
-  harmonic.frequency.exponentialRampToValueAtTime(1380, now + 0.26);
-
-  const noiseBuffer = context.createBuffer(
-    1,
-    Math.floor(context.sampleRate * 1.05),
-    context.sampleRate,
-  );
-  const noiseData = noiseBuffer.getChannelData(0);
-  for (let index = 0; index < noiseData.length; index += 1) {
-    noiseData[index] = (Math.random() * 2 - 1) * (1 - index / noiseData.length);
+  if (
+    normalized.includes("failed to fetch") ||
+    normalized.includes("networkerror")
+  ) {
+    return "AlgoRift could not reach the cloud service. Refresh once and try again.";
   }
-  const noise = context.createBufferSource();
-  const noiseGain = context.createGain();
-  const noiseFilter = context.createBiquadFilter();
-  noise.buffer = noiseBuffer;
-  noiseGain.gain.setValueAtTime(0.035, now);
-  noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 1.02);
-  noiseFilter.type = "bandpass";
-  noiseFilter.frequency.value = 2200;
-  noiseFilter.Q.value = 1.8;
+  if (normalized.includes("email address not authorized")) {
+    return "Public confirmation email is not available yet. Guest saves still work on this device.";
+  }
+  if (
+    normalized.includes("user already registered") ||
+    normalized.includes("already been registered")
+  ) {
+    return "That email already has an account. Use Sign in or reset the password.";
+  }
+  if (
+    normalized.includes("duplicate key") ||
+    normalized.includes("database error saving new user")
+  ) {
+    return "That username is already taken. Choose another username.";
+  }
+  if (
+    normalized.includes("rate limit") ||
+    normalized.includes("too many requests")
+  ) {
+    return "Too many account requests were made recently. Wait a few minutes, then try again.";
+  }
 
-  rumble.connect(filter);
-  beam.connect(filter);
-  harmonic.connect(filter);
-  noise.connect(noiseFilter);
-  noiseFilter.connect(noiseGain);
-  noiseGain.connect(compressor);
-  filter.connect(compressor);
-  compressor.connect(master);
-  master.connect(context.destination);
-
-  rumble.start(now);
-  beam.start(now);
-  harmonic.start(now);
-  noise.start(now);
-  rumble.stop(now + 1.05);
-  beam.stop(now + 1.05);
-  harmonic.stop(now + 1.05);
-  noise.stop(now + 1.05);
-  beam.addEventListener("ended", () => void context.close());
+  return message;
 }
 
 function BrandMark() {
@@ -341,28 +183,13 @@ function BrandMark() {
   );
 }
 
-function PlayerSprite({
-  hit = false,
-  powered = false,
-  firing = false,
-}: {
-  hit?: boolean;
-  powered?: boolean;
-  firing?: boolean;
-}) {
+function PlayerSprite({ powered = false }: { powered?: boolean }) {
   return (
     <div
-      className={[
-        "player-sprite",
-        hit ? "sprite-hit" : "",
-        powered ? "sprite-powered" : "",
-        firing ? "sprite-heat-firing" : "",
-      ].join(" ")}
+      className={`player-sprite ${powered ? "sprite-powered" : ""}`}
       aria-hidden="true"
     >
-      <div className="runner-scarf">
-        <span />
-      </div>
+      <div className="runner-scarf"><span /></div>
       <div className="runner-hair" />
       <div className="runner-head">
         <span className="runner-ear" />
@@ -374,46 +201,18 @@ function PlayerSprite({
       <div className="runner-torso">
         <span className="runner-emblem">A</span>
       </div>
-      <div className="runner-arm runner-arm-left">
-        <span className="runner-hand" />
-      </div>
-      <div className="runner-arm runner-arm-right">
-        <span className="runner-hand" />
-      </div>
-      <div className="runner-leg runner-leg-left">
-        <span className="runner-boot" />
-      </div>
-      <div className="runner-leg runner-leg-right">
-        <span className="runner-boot" />
-      </div>
+      <div className="runner-arm runner-arm-left"><span className="runner-hand" /></div>
+      <div className="runner-arm runner-arm-right"><span className="runner-hand" /></div>
+      <div className="runner-leg runner-leg-left"><span className="runner-boot" /></div>
+      <div className="runner-leg runner-leg-right"><span className="runner-boot" /></div>
     </div>
   );
 }
 
-function BossSprite({
-  health,
-  hit,
-  attacking,
-}: {
-  health: number;
-  hit: boolean;
-  attacking: boolean;
-}) {
+function BossSprite() {
   return (
-    <div
-      className={[
-        "boss-sprite",
-        hit ? "boss-hit" : "",
-        attacking ? "boss-attacking" : "",
-        health <= 0 ? "boss-defeated" : "",
-      ].join(" ")}
-      aria-hidden="true"
-    >
-      <div className="boss-crown">
-        <span />
-        <span />
-        <span />
-      </div>
+    <div className="boss-sprite" aria-hidden="true">
+      <div className="boss-crown"><span /><span /><span /></div>
       <div className="boss-horn boss-horn-left" />
       <div className="boss-horn boss-horn-right" />
       <div className="boss-face">
@@ -429,50 +228,12 @@ function BossSprite({
   );
 }
 
-function HeartMeter({ hearts }: { hearts: number }) {
-  return (
-    <div className="heart-meter" aria-label={`${hearts} focus points remaining`}>
-      {[0, 1, 2].map((heart) => (
-        <Heart
-          key={heart}
-          size={18}
-          fill={heart < hearts ? "currentColor" : "none"}
-          className={heart < hearts ? "heart-active" : "heart-empty"}
-        />
-      ))}
-    </div>
-  );
-}
-
 export function AlgoRift() {
   const [view, setView] = useState<View>("home");
-  const [lessonStep, setLessonStep] = useState(0);
-  const [progress, setProgress] = useState<PlayerProgress>(DEFAULT_PROGRESS);
+  const [progress, setProgress] = useState(DEFAULT_PROGRESS);
   const [ready, setReady] = useState(false);
   const [soundOn, setSoundOn] = useState(true);
-  const [battle, setBattle] = useState<BattleState>(getInitialBattle);
-  const [feedback, setFeedback] = useState(
-    "Run right. Jump goes straight up; move while airborne to clear obstacles.",
-  );
-  const [wrongDecision, setWrongDecision] =
-    useState<SearchDirection | null>(null);
-  const [bossHit, setBossHit] = useState(false);
-  const [bossAttacking, setBossAttacking] = useState(false);
-  const [playerHit, setPlayerHit] = useState(false);
-  const [hintOpen, setHintOpen] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [runnerX, setRunnerX] = useState(5);
-  const [jumping, setJumping] = useState(false);
-  const [runnerMoving, setRunnerMoving] = useState(false);
-  const [collectedCoins, setCollectedCoins] = useState<number[]>([]);
-  const [clearedObstacles, setClearedObstacles] = useState<number[]>([]);
-  const [obstacleBump, setObstacleBump] = useState(false);
-  const [atGate, setAtGate] = useState(false);
-  const [powerUpCollected, setPowerUpCollected] = useState(false);
-  const [powerUpBurst, setPowerUpBurst] = useState(false);
-  const [isHeatVisionFiring, setIsHeatVisionFiring] = useState(false);
-  const [laserEndPosition, setLaserEndPosition] = useState(0);
-  const [laserCooldown, setLaserCooldown] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [authMode, setAuthMode] = useState<
     "signIn" | "signUp" | "forgot" | "recovery"
@@ -494,9 +255,6 @@ export function AlgoRift() {
   >(isSupabaseConfigured ? "loading" : "local");
   const pageTop = useRef<HTMLDivElement>(null);
   const progressRef = useRef(progress);
-  const jumpingRef = useRef(false);
-  const movementTimerRef = useRef<number | null>(null);
-  const directionalTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -523,10 +281,9 @@ export function AlgoRift() {
 
   useEffect(() => {
     if (!ready) return;
-    const supabase = getSupabaseBrowserClient();
-    if (!supabase) return;
-    const client = supabase;
-
+    const maybeClient = getSupabaseBrowserClient();
+    if (!maybeClient) return;
+    const client = maybeClient;
     let active = true;
 
     async function hydrateAccount(nextUser: User | null) {
@@ -557,9 +314,7 @@ export function AlgoRift() {
       if (!active) return;
       if (profileResult.error || progressResult.error) {
         setCloudStatus("error");
-        setAuthError(
-          "Cloud save is not ready yet. Run the provided Supabase SQL, then try again.",
-        );
+        setAuthError("Cloud save tables are unavailable. Check the Supabase setup.");
         return;
       }
 
@@ -598,8 +353,7 @@ export function AlgoRift() {
             user_id: nextUser.id,
             completed_level: mergedProgress.completedLevel,
             xp: mergedProgress.xp,
-            redline_vision_unlocked:
-              mergedProgress.redlineVisionUnlocked,
+            redline_vision_unlocked: mergedProgress.redlineVisionUnlocked,
           },
           { onConflict: "user_id" },
         );
@@ -609,7 +363,6 @@ export function AlgoRift() {
         setCloudStatus("error");
         return;
       }
-
       progressRef.current = mergedProgress;
       setProgress(mergedProgress);
       setCloudHydrated(true);
@@ -633,9 +386,7 @@ export function AlgoRift() {
         setAccountOpen(true);
         setAuthMessage("Choose a new password for your account.");
       }
-      window.setTimeout(() => {
-        void hydrateAccount(session?.user ?? null);
-      }, 0);
+      window.setTimeout(() => void hydrateAccount(session?.user ?? null), 0);
     });
 
     return () => {
@@ -645,12 +396,12 @@ export function AlgoRift() {
   }, [ready]);
 
   useEffect(() => {
-    const supabase = getSupabaseBrowserClient();
-    if (!supabase || !user || !cloudHydrated) return;
+    const client = getSupabaseBrowserClient();
+    if (!client || !user || !cloudHydrated) return;
 
     const timer = window.setTimeout(() => {
       setCloudStatus("saving");
-      void supabase
+      void client
         .from("game_progress")
         .upsert(
           {
@@ -663,384 +414,37 @@ export function AlgoRift() {
         )
         .then(({ error }) => setCloudStatus(error ? "error" : "saved"));
     }, 500);
-
     return () => window.clearTimeout(timer);
   }, [cloudHydrated, progress, user]);
 
-  useEffect(() => {
-    if (view !== "battle") return;
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "ArrowRight" || event.key.toLowerCase() === "d") {
-        event.preventDefault();
-        moveRunner(1);
-      }
-      if (event.key === "ArrowLeft" || event.key.toLowerCase() === "a") {
-        event.preventDefault();
-        moveRunner(-1);
-      }
-      if (event.key === " " || event.key === "ArrowUp" || event.key.toLowerCase() === "w") {
-        event.preventDefault();
-        jumpRunner();
-      }
-      if (event.key.toLowerCase() === "f" || event.key.toLowerCase() === "j") {
-        event.preventDefault();
-        fireRedlineVision();
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  });
-
-  useEffect(
-    () => () => {
-      if (movementTimerRef.current) {
-        window.clearTimeout(movementTimerRef.current);
-      }
-      if (directionalTimerRef.current) {
-        window.clearInterval(directionalTimerRef.current);
-      }
-    },
-    [],
-  );
-
-  const midpoint = Math.floor((battle.low + battle.high) / 2);
-  const midpointValue = VALUES[midpoint];
-  const bossHealth = Math.max(0, 100 - battle.correctShots * 34);
   const displayLevel = Math.max(1, progress.completedLevel + 1);
-  const currentSlide = lessonSlides[lessonStep];
-  const currentRound = Math.min(battle.correctShots + 1, 2);
-  const cameraOffset = Math.max(0, Math.min(64, (runnerX - 18) * 0.9));
-  const levelProgress = Math.round(Math.min(100, (runnerX / 88) * 100));
-  const expectedDirection: SearchDirection =
-    midpointValue < TARGET
-      ? "right"
-      : midpointValue > TARGET
-        ? "left"
-        : "found";
-  const coachTitle = !atGate
-    ? battle.correctShots === 0
-      ? "Run right. The first checkpoint is ahead."
-      : battle.correctShots === 1
-        ? powerUpCollected
-          ? "Laser online. Press F to clear bugs."
-          : "Long run to the boss. Grab the Redline Core."
-        : "The boss is vulnerable. Fire Redline Vision."
-    : currentRound === 1
-      ? "Quick scan: which direction keeps 42?"
-      : "Boss scan: choose the final direction.";
 
   function changeView(nextView: View) {
     setView(nextView);
-    setHintOpen(false);
     window.requestAnimationFrame(() => {
       pageTop.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }
 
-  function startLesson() {
-    setLessonStep(0);
-    changeView("lesson");
-  }
-
-  function startBattle() {
-    setBattle(getInitialBattle());
-    setFeedback(
-      "Run right. Jump goes straight up, so hold a direction while airborne.",
-    );
-    setWrongDecision(null);
-    setHintOpen(false);
-    setRunnerX(5);
-    jumpingRef.current = false;
-    setJumping(false);
-    setRunnerMoving(false);
-    setCollectedCoins([]);
-    setClearedObstacles([]);
-    setObstacleBump(false);
-    setAtGate(false);
-    setPowerUpCollected(false);
-    setPowerUpBurst(false);
-    setIsHeatVisionFiring(false);
-    setLaserEndPosition(0);
-    setLaserCooldown(false);
-    changeView("battle");
-  }
-
-  function stopDirectionalMove() {
-    if (directionalTimerRef.current) {
-      window.clearInterval(directionalTimerRef.current);
-      directionalTimerRef.current = null;
-    }
-  }
-
-  function startDirectionalMove(direction: -1 | 1) {
-    stopDirectionalMove();
-    moveRunner(direction);
-    directionalTimerRef.current = window.setInterval(
-      () => moveRunner(direction),
-      105,
-    );
-  }
-
-  function markRunnerMoving() {
-    setRunnerMoving(true);
-    if (movementTimerRef.current) {
-      window.clearTimeout(movementTimerRef.current);
-    }
-    movementTimerRef.current = window.setTimeout(() => {
-      setRunnerMoving(false);
-    }, 180);
-  }
-
-  function collectCoinsBetween(current: number, next: number) {
-    DATA_COIN_POSITIONS.forEach((position, index) => {
-      if (current < position && next >= position - 1) {
-        setCollectedCoins((coins) =>
-          coins.includes(index) ? coins : [...coins, index],
-        );
-      }
-    });
-  }
-
-  function collectPowerUpBetween(current: number, next: number) {
-    if (
-      battle.correctShots >= 1 &&
-      !powerUpCollected &&
-      current < POWER_UP_POSITION &&
-      next >= POWER_UP_POSITION - 1.5
-    ) {
-      setPowerUpCollected(true);
-      setPowerUpBurst(true);
-      setFeedback(
-        "Redline Vision unlocked. Press F or FIRE to clear bugs in front of Nova.",
-      );
-      playTone(soundOn, 420, 0.08);
-      window.setTimeout(() => playTone(soundOn, 680, 0.12), 90);
-      window.setTimeout(() => setPowerUpBurst(false), 700);
-    }
-  }
-
-  function moveRunner(direction: -1 | 1) {
-    if (
-      battle.status !== "playing" ||
-      isHeatVisionFiring ||
-      bossAttacking ||
-      atGate
-    ) {
-      return;
-    }
-
-    markRunnerMoving();
-    setRunnerX((current) => {
-      if (direction === -1) {
-        return Math.max(3, current - 3.5);
-      }
-
-      const stage = Math.min(battle.correctShots, GATE_POSITIONS.length - 1);
-      const gate = GATE_POSITIONS[stage];
-      const next = Math.min(gate, current + 2.8);
-      const nextObstacleIndex = COURSE_OBSTACLES.findIndex(
-        (obstacle, index) =>
-          !clearedObstacles.includes(index) &&
-          current < obstacle.position &&
-          next >= obstacle.position - 1.2,
-      );
-
-      if (nextObstacleIndex >= 0 && !jumpingRef.current) {
-        setObstacleBump(true);
-        setFeedback(
-          "Obstacle ahead. Jump over it or stomp the bug, then keep running right.",
-        );
-        playTone(soundOn, 135, 0.12);
-        window.setTimeout(() => setObstacleBump(false), 320);
-        return current;
-      }
-
-      if (nextObstacleIndex >= 0 && jumpingRef.current) {
-        const obstacle = COURSE_OBSTACLES[nextObstacleIndex];
-        setClearedObstacles((items) =>
-          items.includes(nextObstacleIndex)
-            ? items
-            : [...items, nextObstacleIndex],
-        );
-        setFeedback(
-          obstacle.type === "bug"
-            ? "Bug stomped. Keep holding right while Nova lands."
-            : "Pipe cleared. Jumping changes height, not horizontal position.",
-        );
-        playTone(soundOn, obstacle.type === "bug" ? 230 : 390, 0.1);
-      }
-
-      collectCoinsBetween(current, next);
-      collectPowerUpBetween(current, next);
-      if (next >= gate - 0.5 && battle.correctShots < 2) {
-        stopDirectionalMove();
-        setAtGate(true);
-        setFeedback(
-          currentRound === 1
-            ? `Scanner found the middle value ${midpointValue}. Compare it with ${TARGET} and choose a direction.`
-            : `Boss scan found middle value ${midpointValue}. Which direction can still contain ${TARGET}?`,
-        );
-      }
-      return next;
-    });
-  }
-
-  function jumpRunner() {
-    if (jumpingRef.current || battle.status !== "playing" || atGate) return;
-    jumpingRef.current = true;
-    setJumping(true);
-    playTone(soundOn, 350, 0.1);
-
-    window.setTimeout(() => {
-      jumpingRef.current = false;
-      setJumping(false);
-    }, 720);
-  }
-
-  function chooseDirection(direction: SearchDirection) {
-    if (
-      battle.status !== "playing" ||
-      isHeatVisionFiring ||
-      bossAttacking
-    ) {
-      return;
-    }
-
-    if (!atGate) {
-      setFeedback(
-        "Reach the scanner gate first. Move right and jump over the bug block.",
-      );
-      return;
-    }
-
-    setHintOpen(false);
-
-    if (direction !== expectedDirection) {
-      const nextHearts = battle.hearts - 1;
-      setWrongDecision(direction);
-      setBossAttacking(true);
-      setPlayerHit(true);
-      playTone(soundOn, 110, 0.2);
-      setFeedback(
-        `${midpointValue} is ${midpointValue < TARGET ? "smaller" : "larger"} than ${TARGET}. The target must be to the ${expectedDirection}.`,
-      );
-
-      window.setTimeout(() => {
-        setWrongDecision(null);
-        setBossAttacking(false);
-        setPlayerHit(false);
-      }, 650);
-
-      setBattle((current) => ({
-        ...current,
-        hearts: nextHearts,
-        status: nextHearts === 0 ? "lost" : "playing",
+  const handleGameComplete = useCallback(
+    ({
+      completedLevel,
+      xp,
+      redlineVisionUnlocked,
+    }: {
+      completedLevel: number;
+      xp: number;
+      redlineVisionUnlocked: boolean;
+    }) => {
+      setProgress((current) => ({
+        completedLevel: Math.max(current.completedLevel, completedLevel),
+        xp: Math.max(current.xp, xp),
+        redlineVisionUnlocked:
+          current.redlineVisionUnlocked || redlineVisionUnlocked,
       }));
-      return;
-    }
-
-    const nextShots = battle.correctShots + 1;
-    setWrongDecision(null);
-    playTone(soundOn, 620, 0.14);
-    setBattle((current) => ({
-      ...current,
-      low:
-        expectedDirection === "right"
-          ? midpoint + 1
-          : current.low,
-      high:
-        expectedDirection === "left"
-          ? midpoint - 1
-          : current.high,
-      correctShots: nextShots,
-    }));
-    setAtGate(false);
-    setFeedback(
-      nextShots === 1
-        ? `${midpointValue} is smaller than ${TARGET}, so the left half vanished. Keep running; Redline Vision is ahead.`
-        : `${midpointValue} is smaller than ${TARGET}. Only ${TARGET} remains. Press F or FIRE to hit the boss.`,
-    );
-  }
-
-  function fireRedlineVision() {
-    if (
-      battle.status !== "playing" ||
-      isHeatVisionFiring ||
-      laserCooldown ||
-      atGate
-    ) {
-      return;
-    }
-
-    if (!powerUpCollected) {
-      setFeedback("Redline Vision is locked. Reach the glowing core first.");
-      return;
-    }
-
-    const bossShot = battle.correctShots >= 2 && runnerX >= 86;
-    const targetIndexes = COURSE_OBSTACLES.reduce<number[]>(
-      (matches, obstacle, index) => {
-        if (
-          obstacle.type === "bug" &&
-          !clearedObstacles.includes(index) &&
-          obstacle.position > runnerX &&
-          obstacle.position <= runnerX + 18
-        ) {
-          matches.push(index);
-        }
-        return matches;
-      },
-      [],
-    );
-    const farthestBugPosition = targetIndexes.reduce(
-      (farthest, index) =>
-        Math.max(farthest, COURSE_OBSTACLES[index].position),
-      runnerX + 15,
-    );
-
-    setLaserCooldown(true);
-    setLaserEndPosition(
-      bossShot ? 98 : Math.min(87, farthestBugPosition + 1.5),
-    );
-    setIsHeatVisionFiring(true);
-    playHeatVisionSound(soundOn);
-
-    window.setTimeout(() => {
-      if (bossShot) {
-        setBossHit(true);
-        setBattle((current) => ({
-          ...current,
-          correctShots: 3,
-          status: "won",
-        }));
-        setFeedback(
-          "Direct hit. Binary search narrowed seven values to 42 in three checks.",
-        );
-        setProgress((current) => ({
-          completedLevel: Math.max(current.completedLevel, 1),
-          xp: Math.max(current.xp, 100),
-          redlineVisionUnlocked: true,
-        }));
-      } else if (targetIndexes.length > 0) {
-        setClearedObstacles((items) => [
-          ...new Set([...items, ...targetIndexes]),
-        ]);
-        setFeedback(
-          `Redline Vision cleared ${targetIndexes.length} ${targetIndexes.length === 1 ? "bug" : "bugs"}. Keep moving.`,
-        );
-      } else {
-        setFeedback("The beam missed. Move closer to a bug and fire again.");
-      }
-    }, 420);
-
-    window.setTimeout(() => {
-      setIsHeatVisionFiring(false);
-      setBossHit(false);
-    }, 980);
-    window.setTimeout(() => setLaserCooldown(false), 1150);
-  }
+    },
+    [],
+  );
 
   function resetProgress() {
     const freshProgress = { ...DEFAULT_PROGRESS };
@@ -1048,7 +452,6 @@ export function AlgoRift() {
     progressRef.current = freshProgress;
     window.localStorage.removeItem(STORAGE_KEY);
     setShowResetConfirm(false);
-    setBattle(getInitialBattle());
     setView("home");
   }
 
@@ -1063,10 +466,11 @@ export function AlgoRift() {
 
   async function handleAuthSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const supabase = getSupabaseBrowserClient();
-    if (!supabase) {
+    const client = getSupabaseBrowserClient();
+    if (!client) {
       setAuthError(
-        "Cloud accounts are not configured yet. Add the Supabase environment variables first.",
+        supabaseConfigurationError ||
+          "Cloud accounts are not configured yet.",
       );
       return;
     }
@@ -1080,46 +484,43 @@ export function AlgoRift() {
     try {
       if (authMode === "forgot") {
         if (!email) throw new Error("Enter the email address for your account.");
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        const { error } = await client.auth.resetPasswordForEmail(email, {
           redirectTo: window.location.origin,
         });
         if (error) throw error;
-        setAuthMessage(
-          "Password reset email sent. Open the secure link in that email.",
-        );
+        setAuthMessage("Password reset email sent.");
         return;
       }
 
       if (authMode === "recovery") {
         if (!PASSWORD_PATTERN.test(authForm.password)) {
           throw new Error(
-            "Use at least 10 characters with at least one letter and one number.",
+            "Use at least 10 characters with at least one letter and number.",
           );
         }
-        const { error } = await supabase.auth.updateUser({
+        const { error } = await client.auth.updateUser({
           password: authForm.password,
         });
         if (error) throw error;
-        setAuthMessage("Password updated. Your account is secure and ready.");
+        setAuthMessage("Password updated.");
         setAuthMode("signIn");
-        setAuthForm((current) => ({ ...current, password: "" }));
         return;
       }
 
       if (!email) throw new Error("Enter a valid email address.");
       if (!PASSWORD_PATTERN.test(authForm.password)) {
         throw new Error(
-          "Use at least 10 characters with at least one letter and one number.",
+          "Use at least 10 characters with at least one letter and number.",
         );
       }
 
       if (authMode === "signUp") {
         if (!USERNAME_PATTERN.test(usernameValue)) {
           throw new Error(
-            "Username must be 3–20 lowercase letters, numbers, or underscores.",
+            "Username must be 3-20 lowercase letters, numbers, or underscores.",
           );
         }
-        const { data, error } = await supabase.auth.signUp({
+        const { data, error } = await client.auth.signUp({
           email,
           password: authForm.password,
           options: {
@@ -1130,16 +531,16 @@ export function AlgoRift() {
         if (error) throw error;
         setAuthMessage(
           data.session
-            ? "Account created. Your progress is now syncing."
-            : "Account created. Check your email to confirm it before signing in.",
+            ? "Account created. Cloud sync is active."
+            : "Account created. Check your email to confirm it.",
         );
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { error } = await client.auth.signInWithPassword({
           email,
           password: authForm.password,
         });
         if (error) throw error;
-        setAuthMessage("Signed in. Cloud progress is syncing now.");
+        setAuthMessage("Signed in. Cloud progress is syncing.");
         window.setTimeout(() => setAccountOpen(false), 650);
       }
       setAuthForm((current) => ({ ...current, password: "" }));
@@ -1151,10 +552,10 @@ export function AlgoRift() {
   }
 
   async function signOut() {
-    const supabase = getSupabaseBrowserClient();
-    if (!supabase) return;
+    const client = getSupabaseBrowserClient();
+    if (!client) return;
     setAuthBusy(true);
-    const { error } = await supabase.auth.signOut();
+    const { error } = await client.auth.signOut();
     setAuthBusy(false);
     if (error) {
       setAuthError(error.message);
@@ -1184,16 +585,14 @@ export function AlgoRift() {
             type="button"
             onClick={() => changeView("home")}
           >
-            <Home size={16} />
-            Home
+            <Home size={16} /> Home
           </button>
           <button
             className={view === "world" ? "active" : ""}
             type="button"
             onClick={() => changeView("world")}
           >
-            <Map size={16} />
-            World
+            <Map size={16} /> World
           </button>
         </nav>
 
@@ -1206,7 +605,9 @@ export function AlgoRift() {
               setAuthError("");
               setAuthMessage("");
             }}
-            aria-label={user ? `Open account for ${username}` : "Sign in or create account"}
+            aria-label={
+              user ? `Open account for ${username}` : "Sign in or create account"
+            }
           >
             {user ? <Cloud size={17} /> : <UserRound size={17} />}
             <span>{user ? username || "Account" : "Account"}</span>
@@ -1227,246 +628,25 @@ export function AlgoRift() {
       </header>
 
       {accountOpen && (
-        <div
-          className="result-overlay account-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-label="AlgoRift account"
-        >
-          <section className="account-card">
-            <button
-              type="button"
-              className="account-close"
-              onClick={() => setAccountOpen(false)}
-              aria-label="Close account"
-            >
-              ×
-            </button>
-
-            {user ? (
-              <>
-                <div className="account-identity">
-                  <span className="account-avatar">
-                    <UserRound size={25} />
-                  </span>
-                  <div>
-                    <small>CLOUD PATHFINDER</small>
-                    <h2>{username || "Pathfinder"}</h2>
-                    <p>{user.email}</p>
-                  </div>
-                </div>
-
-                <div className={`cloud-save-state state-${cloudStatus}`}>
-                  {cloudStatus === "error" ? (
-                    <CloudOff size={18} />
-                  ) : cloudStatus === "saving" || cloudStatus === "loading" ? (
-                    <Cloud size={18} />
-                  ) : (
-                    <Save size={18} />
-                  )}
-                  <div>
-                    <strong>
-                      {cloudStatus === "saving"
-                        ? "Saving progress…"
-                        : cloudStatus === "loading"
-                          ? "Loading cloud save…"
-                          : cloudStatus === "error"
-                            ? "Cloud sync needs attention"
-                            : "Progress saved"}
-                    </strong>
-                    <span>
-                      Level {displayLevel} · {progress.xp} XP · private to this account
-                    </span>
-                  </div>
-                </div>
-
-                <div className="account-security-note">
-                  <Shield size={18} />
-                  Passwords are handled by Supabase Auth. AlgoRift never stores
-                  or displays your password.
-                </div>
-
-                <button
-                  className="game-secondary account-signout"
-                  type="button"
-                  onClick={() => void signOut()}
-                  disabled={authBusy}
-                >
-                  <LogOut size={17} /> Sign out
-                </button>
-              </>
-            ) : (
-              <>
-                <div className="account-heading">
-                  <span className="account-avatar">
-                    {authMode === "signUp" ? (
-                      <Sparkles size={25} />
-                    ) : (
-                      <KeyRound size={25} />
-                    )}
-                  </span>
-                  <div>
-                    <small>OPTIONAL CLOUD SAVE</small>
-                    <h2>
-                      {authMode === "signUp"
-                        ? "Create your Pathfinder"
-                        : authMode === "forgot"
-                          ? "Reset your password"
-                          : authMode === "recovery"
-                            ? "Choose a new password"
-                            : "Welcome back"}
-                    </h2>
-                  </div>
-                </div>
-
-                {!isSupabaseConfigured && (
-                  <div className="auth-message auth-warning">
-                    Cloud accounts need the Supabase project variables. Guest
-                    progress still works on this device.
-                  </div>
-                )}
-
-                <form className="auth-form" onSubmit={handleAuthSubmit}>
-                  {authMode === "signUp" && (
-                    <label>
-                      <span>Username</span>
-                      <div className="auth-input">
-                        <UserRound size={17} />
-                        <input
-                          type="text"
-                          value={authForm.username}
-                          onChange={(event) =>
-                            updateAuthField("username", event.target.value)
-                          }
-                          placeholder="pathfinder_01"
-                          autoComplete="username"
-                          minLength={3}
-                          maxLength={20}
-                          pattern="[a-z0-9_]{3,20}"
-                          required
-                        />
-                      </div>
-                      <small>3–20 lowercase letters, numbers, or underscores.</small>
-                    </label>
-                  )}
-
-                  {authMode !== "recovery" && (
-                    <label>
-                      <span>Email</span>
-                      <div className="auth-input">
-                        <Mail size={17} />
-                        <input
-                          type="email"
-                          value={authForm.email}
-                          onChange={(event) =>
-                            updateAuthField("email", event.target.value)
-                          }
-                          placeholder="you@example.com"
-                          autoComplete="email"
-                          required
-                        />
-                      </div>
-                      {authMode === "signUp" && (
-                        <small>A confirmation email is required before sign in.</small>
-                      )}
-                    </label>
-                  )}
-
-                  {authMode !== "forgot" && (
-                    <label>
-                      <span>
-                        {authMode === "recovery" ? "New password" : "Password"}
-                      </span>
-                      <div className="auth-input">
-                        <KeyRound size={17} />
-                        <input
-                          type={showPassword ? "text" : "password"}
-                          value={authForm.password}
-                          onChange={(event) =>
-                            updateAuthField("password", event.target.value)
-                          }
-                          placeholder="10+ characters"
-                          autoComplete={
-                            authMode === "signUp" || authMode === "recovery"
-                              ? "new-password"
-                              : "current-password"
-                          }
-                          minLength={10}
-                          pattern="(?=.*[A-Za-z])(?=.*\d).{10,}"
-                          required
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword((shown) => !shown)}
-                          aria-label={showPassword ? "Hide password" : "Show password"}
-                        >
-                          {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
-                        </button>
-                      </div>
-                      <small>Use 10+ characters with at least one letter and number.</small>
-                    </label>
-                  )}
-
-                  {authError && (
-                    <div className="auth-message auth-error">{authError}</div>
-                  )}
-                  {authMessage && (
-                    <div className="auth-message auth-success">{authMessage}</div>
-                  )}
-
-                  <button
-                    className="game-primary auth-submit"
-                    type="submit"
-                    disabled={authBusy || !isSupabaseConfigured}
-                  >
-                    {authBusy ? (
-                      "Working…"
-                    ) : authMode === "signUp" ? (
-                      <>
-                        <Sparkles size={17} /> Create account
-                      </>
-                    ) : authMode === "forgot" ? (
-                      <>
-                        <Mail size={17} /> Send reset email
-                      </>
-                    ) : authMode === "recovery" ? (
-                      <>
-                        <Shield size={17} /> Update password
-                      </>
-                    ) : (
-                      <>
-                        <LogIn size={17} /> Sign in
-                      </>
-                    )}
-                  </button>
-                </form>
-
-                <div className="auth-switches">
-                  {authMode === "signIn" && (
-                    <>
-                      <button type="button" onClick={() => setAuthMode("signUp")}>
-                        Create an account
-                      </button>
-                      <button type="button" onClick={() => setAuthMode("forgot")}>
-                        Forgot password?
-                      </button>
-                    </>
-                  )}
-                  {(authMode === "signUp" || authMode === "forgot") && (
-                    <button type="button" onClick={() => setAuthMode("signIn")}>
-                      Back to sign in
-                    </button>
-                  )}
-                </div>
-
-                <p className="guest-note">
-                  Accounts are optional. You can keep playing as a guest with
-                  progress saved only on this device.
-                </p>
-              </>
-            )}
-          </section>
-        </div>
+        <AccountDialog
+          authBusy={authBusy}
+          authError={authError}
+          authForm={authForm}
+          authMessage={authMessage}
+          authMode={authMode}
+          cloudStatus={cloudStatus}
+          displayLevel={displayLevel}
+          progress={progress}
+          showPassword={showPassword}
+          user={user}
+          username={username}
+          onClose={() => setAccountOpen(false)}
+          onModeChange={setAuthMode}
+          onPasswordVisibility={() => setShowPassword((shown) => !shown)}
+          onSignOut={() => void signOut()}
+          onSubmit={handleAuthSubmit}
+          onUpdateField={updateAuthField}
+        />
       )}
 
       {view === "home" && (
@@ -1482,99 +662,92 @@ export function AlgoRift() {
 
             <div className="hero-content">
               <span className="quest-label">
-                <Sparkles size={15} />
-                Your first quest begins here
+                <Terminal size={15} /> WORLD 1 SYSTEM ONLINE
               </span>
               <h1>
-                Learn algorithms.
-                <span>Play the decisions.</span>
+                Run the world.
+                <span>Rewrite the system.</span>
               </h1>
               <p>
-                A beginner-friendly side-scrolling adventure where every level
-                teaches one idea, lets you use it, and turns it into a boss battle.
+                A momentum platformer where algorithm traces and live physics
+                overrides are part of the level, not a quiz beside it.
               </p>
-
               <div className="hero-buttons">
-                <button className="game-primary" type="button" onClick={startLesson}>
+                <button
+                  className="game-primary"
+                  type="button"
+                  onClick={() => changeView("battle")}
+                >
                   <Play size={18} fill="currentColor" />
-                  {progress.completedLevel > 0 ? "Replay Level 1" : "Start Level 1"}
+                  {progress.completedLevel > 0 ? "Replay World 1" : "Enter World 1"}
                 </button>
                 <button
                   className="game-secondary"
                   type="button"
                   onClick={() => changeView("world")}
                 >
-                  View world map
-                  <ArrowRight size={17} />
+                  View world map <ArrowRight size={17} />
                 </button>
               </div>
-
               <div className="first-mission">
                 <span className="mission-number">1-1</span>
                 <div>
-                  <small>NEXT MISSION</small>
-                  <strong>Binary Blaster</strong>
-                  <span>Learn binary search · charge Redline Vision</span>
+                  <small>NEXT SECTOR</small>
+                  <strong>Boot Sequence</strong>
+                  <span>Momentum · Binary Trace · System Override</span>
                 </div>
-                <span className="mission-reward">+100 XP</span>
+                <span className="mission-reward">+250 XP</span>
               </div>
             </div>
 
-            <div className="hero-scene" aria-label="Preview of the Binary Blaster boss">
+            <div className="hero-scene" aria-label="AlgoRift game preview">
               <div className="speech-bubble">
-                <strong>GLITCH KING</strong>
-                <span>You will never find 42!</span>
+                <strong>ROOT GUARD</strong>
+                <span>ACCESS DENIED</span>
               </div>
-              <div className="hero-player"><PlayerSprite /></div>
+              <div className="hero-player"><PlayerSprite powered /></div>
               <div className="hero-power-core" aria-hidden="true">
-                <span />
-                <Flame size={20} />
+                <span /><Flame size={20} />
               </div>
-              <div className="hero-boss">
-                <BossSprite health={100} hit={false} attacking={false} />
-              </div>
-              <div className="floating-coin coin-one">O(log n)</div>
-              <div className="floating-coin coin-two">MID</div>
+              <div className="hero-boss"><BossSprite /></div>
+              <div className="floating-coin coin-one">0.20×</div>
+              <div className="floating-coin coin-two">O(log n)</div>
               <div className="ground-platform">
-                <span />
-                <span />
-                <span />
-                <span />
-                <span />
+                <span /><span /><span /><span /><span />
               </div>
             </div>
           </section>
 
           <section className="how-it-works">
             <div className="simple-heading">
-              <span>HOW EACH LEVEL WORKS</span>
-              <h2>Three steps. No guessing what to do next.</h2>
+              <span>CORE GAME LOOP</span>
+              <h2>Platforming first. Systems underneath.</h2>
             </div>
             <div className="steps-row">
               <article>
-                <span className="step-icon"><BookOpen size={22} /></span>
+                <span className="step-icon"><Zap size={22} /></span>
                 <div>
-                  <small>STEP 1</small>
-                  <h3>Learn</h3>
-                  <p>See one rule at a time with a visual example.</p>
+                  <small>MOVE</small>
+                  <h3>Build momentum</h3>
+                  <p>Acceleration, friction, variable jumps, and faster falls.</p>
                 </div>
               </article>
-              <ChevronRight className="step-arrow" />
+              <ArrowRight className="step-arrow" />
+              <article>
+                <span className="step-icon"><SlidersHorizontal size={22} /></span>
+                <div>
+                  <small>OVERRIDE</small>
+                  <h3>Tune the engine</h3>
+                  <p>Drop time to 20% and patch live physics parameters.</p>
+                </div>
+              </article>
+              <ArrowRight className="step-arrow" />
               <article>
                 <span className="step-icon"><Target size={22} /></span>
                 <div>
-                  <small>STEP 2</small>
-                  <h3>Decide</h3>
-                    <p>Run, jump, and choose the next move. The answer is never highlighted.</p>
-                </div>
-              </article>
-              <ChevronRight className="step-arrow" />
-              <article>
-                <span className="step-icon"><Zap size={22} /></span>
-                <div>
-                  <small>STEP 3</small>
-                  <h3>Battle</h3>
-                  <p>Correct reasoning powers your attack. Mistakes teach, not punish.</p>
+                  <small>BREACH</small>
+                  <h3>Resolve the trace</h3>
+                  <p>Narrow the signal window and unlock the route forward.</p>
                 </div>
               </article>
             </div>
@@ -1584,52 +757,46 @@ export function AlgoRift() {
             <div className="power-feature-art" aria-hidden="true">
               <div className="power-orbit orbit-one" />
               <div className="power-orbit orbit-two" />
-              <div className="power-core-large">
-                <span />
-                <Flame size={34} />
-              </div>
-              <div className="power-preview-player">
-                <PlayerSprite powered firing />
-              </div>
-              <div className="power-preview-beam">
-                <i />
-                <i />
-              </div>
+              <div className="power-core-large"><span /><Flame size={34} /></div>
+              <div className="power-preview-player"><PlayerSprite powered /></div>
+              <div className="power-preview-beam"><i /><i /></div>
             </div>
             <div className="power-feature-copy">
               <span className="section-label">
-                <Flame size={15} /> New power-up
+                <Flame size={15} /> Redline kernel
               </span>
-              <h2>Redline Vision rewards correct reasoning.</h2>
+              <h2>One beam. Every target in the lane.</h2>
               <p>
-                Clear one search checkpoint to reveal the core, then use the
-                beam repeatedly against bugs before firing the finishing shot
-                in the boss arena.
+                Install Redline inside the first sector, then pierce groups of
+                bugs and break the final Root Guard.
               </p>
               <div className="power-rule">
                 <Shield size={18} />
-                <span>
-                  The power changes the attack, never the algorithm. It cannot
-                  reveal an answer or skip a midpoint decision.
-                </span>
+                <span>Original procedural visuals and audio. No borrowed game assets.</span>
               </div>
             </div>
           </section>
 
           <section className="home-progress">
             <div>
-              <span className="section-label"><Compass size={15} /> Campaign progress</span>
-              <h2>{progress.completedLevel === 0 ? "Your journey starts at Level 1." : "Level 1 cleared. Nice work."}</h2>
+              <span className="section-label">
+                <Compass size={15} /> Campaign progress
+              </span>
+              <h2>
+                {progress.completedLevel === 0
+                  ? "World 1 is ready."
+                  : "World 1 root access secured."}
+              </h2>
               <p>
                 {user
-                  ? `Signed in as ${username || "Pathfinder"}. Progress is encrypted in transit and saved to your private cloud row.`
-                  : "Progress is earned by completing playable lessons. Play as a guest on this device or create an account for cloud saves."}
+                  ? `Signed in as ${username || "Pathfinder"}. Progress syncs to your private cloud row.`
+                  : "Play immediately as a guest or create an account for cloud saves."}
               </p>
             </div>
             <div className="progress-card">
               <div className="progress-card-top">
                 <span>WORLD 1</span>
-                <strong>{progress.completedLevel > 0 ? "1 / 7 levels" : "0 / 7 levels"}</strong>
+                <strong>{progress.completedLevel > 0 ? "1 / 7" : "0 / 7"}</strong>
               </div>
               <div className="campaign-track">
                 <span style={{ width: `${(progress.completedLevel / 7) * 100}%` }} />
@@ -1642,509 +809,13 @@ export function AlgoRift() {
         </main>
       )}
 
-      {view === "lesson" && (
-        <main className="lesson-view">
-          <div className="view-toolbar">
-            <button type="button" onClick={() => changeView("home")}>
-              <ArrowLeft size={17} /> Exit lesson
-            </button>
-            <span>LEVEL 1 · BINARY BLASTER</span>
-            <div
-              className="lesson-dots"
-              aria-label={`Lesson step ${lessonStep + 1} of ${lessonSlides.length}`}
-            >
-              {lessonSlides.map((slide, index) => (
-                <span key={slide.number} className={index <= lessonStep ? "filled" : ""} />
-              ))}
-            </div>
-          </div>
-
-          <section className="lesson-stage">
-            <div className="teacher-panel">
-              <div className="guide-avatar">
-                <PlayerSprite />
-              </div>
-              <div className="guide-copy">
-                <span className="quest-label">NOVA&apos;S FIELD GUIDE · LESSON {currentSlide.number}</span>
-                <small>{currentSlide.eyebrow}</small>
-                <h1>{currentSlide.title}</h1>
-                <p>{currentSlide.copy}</p>
-                <div className="lesson-note">
-                  <Lightbulb size={18} />
-                  <span>{currentSlide.note}</span>
-                </div>
-                <div className="lesson-plain">
-                  <strong>Plain English</strong>
-                  <span>{currentSlide.plain}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className={`lesson-visual visual-${currentSlide.visual}`}>
-              <div className="visual-target">
-                <Crosshair size={18} />
-                TARGET: 42
-              </div>
-              <div className="teaching-array">
-                {VALUES.map((value, index) => (
-                  <div
-                    key={value}
-                    className={[
-                      currentSlide.visual === "midpoint" && index === 3
-                        ? "teaching-mid"
-                        : "",
-                      currentSlide.visual === "discard" && index <= 3
-                        ? "teaching-discarded"
-                        : "",
-                    ].join(" ")}
-                  >
-                    <span>{value}</span>
-                    <small>position {index}</small>
-                  </div>
-                ))}
-              </div>
-              {currentSlide.visual === "midpoint" && (
-                <div className="midpoint-pointer">
-                  <span>mid = 3</span>
-                  <ArrowRight size={18} />
-                </div>
-              )}
-              {currentSlide.visual === "discard" && (
-                <div className="discard-message">
-                  <span>17 &lt; 42</span>
-                  <strong>Remove positions 0–3</strong>
-                  <span>Keep positions 4–6</span>
-                </div>
-              )}
-            </div>
-          </section>
-
-          <div className="lesson-controls">
-            <button
-              className="game-secondary"
-              type="button"
-              disabled={lessonStep === 0}
-              onClick={() => setLessonStep((step) => Math.max(0, step - 1))}
-            >
-              <ArrowLeft size={17} /> Previous
-            </button>
-            {lessonStep < lessonSlides.length - 1 ? (
-              <button
-                className="game-primary"
-                type="button"
-                onClick={() => setLessonStep((step) => step + 1)}
-              >
-                Next idea <ArrowRight size={17} />
-              </button>
-            ) : (
-              <button className="game-primary" type="button" onClick={startBattle}>
-                <Crosshair size={18} /> Start Level 1
-              </button>
-            )}
-          </div>
-        </main>
-      )}
-
       {view === "battle" && (
-        <main className="battle-view">
-          <div className="view-toolbar battle-toolbar">
-            <button type="button" onClick={() => changeView("home")}>
-              <ArrowLeft size={17} /> Leave battle
-            </button>
-            <span>LEVEL 1-1 · BINARY BLASTER</span>
-            <button type="button" onClick={startBattle}>
-              <RotateCcw size={16} /> Restart
-            </button>
-          </div>
-
-          <section className="battle-scene">
-            <div className="battle-sky">
-              <div className="cloud battle-cloud-one" />
-              <div className="cloud battle-cloud-two" />
-            </div>
-
-            <div className="battle-hud">
-              <div className="hud-player">
-                <span>PATHFINDER</span>
-                <HeartMeter hearts={battle.hearts} />
-              </div>
-              <div className="mission-target">
-                <Crosshair size={17} />
-                FIND <strong>{TARGET}</strong>
-              </div>
-              <div className="hud-boss">
-                <span>GLITCH KING</span>
-                <div className="boss-health-track">
-                  <i style={{ width: `${bossHealth}%` }} />
-                </div>
-              </div>
-            </div>
-
-            <div
-              className={[
-                "power-status",
-                powerUpCollected ? "power-ready" : "",
-                isHeatVisionFiring ? "power-firing" : "",
-              ].join(" ")}
-            >
-              <Flame size={16} />
-              <span>REDLINE VISION</span>
-              <strong>
-                {isHeatVisionFiring
-                  ? "FIRING"
-                  : powerUpCollected
-                    ? laserCooldown
-                      ? "COOLING"
-                      : "FIRE READY"
-                      : battle.correctShots >= 1
-                      ? "CORE AHEAD"
-                      : "LOCKED"}
-              </strong>
-            </div>
-
-            <div className="stage-coach" aria-live="polite">
-              <span>
-                {atGate
-                  ? currentRound === 1
-                    ? "LEARNING CHECKPOINT"
-                    : "BOSS SCANNER"
-                  : "COURSE PROGRESS"}
-              </span>
-              <strong>{coachTitle}</strong>
-              <small>
-                {atGate
-                  ? "One quick choice, then you are back in the action."
-                  : powerUpCollected
-                    ? "Move with A/D. Space jumps straight up. F fires."
-                    : "Move with A/D. Space jumps straight up."}
-              </small>
-              <div className="level-progress" aria-label={`${levelProgress}% through the course`}>
-                <i style={{ width: `${levelProgress}%` }} />
-                <b>{levelProgress}%</b>
-              </div>
-            </div>
-
-            <div className="stage-controls" aria-label="Platform controls">
-              <button
-                type="button"
-                onPointerDown={() => startDirectionalMove(-1)}
-                onPointerUp={stopDirectionalMove}
-                onPointerCancel={stopDirectionalMove}
-                onPointerLeave={stopDirectionalMove}
-                aria-label="Move left"
-              >
-                <ArrowLeft size={19} />
-                <span>LEFT</span>
-              </button>
-              <button
-                type="button"
-                className="jump-control"
-                onClick={jumpRunner}
-                aria-label="Jump"
-              >
-                <span className="jump-control-arrow">↑</span>
-                <span>JUMP</span>
-              </button>
-              <button
-                type="button"
-                onPointerDown={() => startDirectionalMove(1)}
-                onPointerUp={stopDirectionalMove}
-                onPointerCancel={stopDirectionalMove}
-                onPointerLeave={stopDirectionalMove}
-                aria-label="Run right"
-              >
-                <ArrowRight size={19} />
-                <span>RUN</span>
-              </button>
-              <button
-                type="button"
-                className="fire-control"
-                onClick={fireRedlineVision}
-                disabled={!powerUpCollected || laserCooldown}
-                aria-label="Fire Redline Vision"
-              >
-                <Flame size={18} />
-                <span>FIRE</span>
-              </button>
-            </div>
-
-            <div
-              className="scrolling-track"
-              style={{ transform: `translateX(-${cameraOffset}%)` }}
-            >
-              <div className="city-silhouette" />
-              <div className="course-sign start-sign" aria-hidden="true">
-                <strong>1-1</strong>
-                <span>START</span>
-              </div>
-              <div className="course-sign power-lane-sign" aria-hidden="true">
-                <strong>POWER LANE</strong>
-                <span>LASER BUGS WITH F</span>
-              </div>
-              <div className="finish-flag" aria-hidden="true">
-                <span />
-                <strong>BOSS</strong>
-              </div>
-
-              {DATA_COIN_POSITIONS.map((position, index) => (
-                <div
-                  className={`data-coin ${collectedCoins.includes(index) ? "coin-collected" : ""}`}
-                  key={position}
-                  style={{ left: `${position}%` }}
-                  aria-hidden="true"
-                >
-                  <span>{index % 2}</span>
-                </div>
-              ))}
-
-            <div
-              className={[
-                "runner-player",
-                jumping ? "runner-jumping" : "",
-                runnerMoving ? "runner-moving" : "",
-                obstacleBump ? "runner-bump" : "",
-                powerUpBurst ? "runner-power-burst" : "",
-              ].join(" ")}
-              style={{ left: `${runnerX}%` }}
-            >
-              <PlayerSprite
-                hit={playerHit}
-                powered={powerUpCollected}
-                firing={isHeatVisionFiring}
-              />
-              <span className="character-name">{username || "NOVA"}</span>
-            </div>
-
-            {battle.correctShots >= 1 && !powerUpCollected && (
-              <div
-                className="redline-pickup"
-                style={{ left: `${POWER_UP_POSITION}%` }}
-                role="img"
-                aria-label="Redline Vision power-up"
-              >
-                <span className="pickup-rays" />
-                <span className="pickup-core">
-                  <Flame size={20} />
-                </span>
-                <small>REDLINE</small>
-              </div>
-            )}
-
-            {COURSE_OBSTACLES.map((obstacle, index) => (
-              <div
-                className={[
-                  "course-obstacle",
-                  obstacle.type === "bug" ? "bug-obstacle" : "pipe-obstacle",
-                  clearedObstacles.includes(index) && obstacle.type === "bug"
-                    ? "obstacle-cleared"
-                    : "",
-                  clearedObstacles.includes(index) && obstacle.type === "pipe"
-                    ? "obstacle-passed"
-                    : "",
-                ].join(" ")}
-                key={`${obstacle.type}-${obstacle.position}`}
-                style={{ left: `${obstacle.position}%` }}
-                aria-hidden="true"
-              >
-                {obstacle.type === "bug" ? (
-                  <>
-                    <span className="bug-eye" />
-                    <span className="bug-eye" />
-                    <small>BUG</small>
-                  </>
-                ) : (
-                  <>
-                    <span className="pipe-rim" />
-                    <small>PIPE</small>
-                  </>
-                )}
-              </div>
-            ))}
-
-            {battle.status === "playing" && battle.correctShots < 2 && (
-              <div
-                className={`scanner-gate ${atGate ? "gate-active" : ""}`}
-                style={{
-                  left: `${GATE_POSITIONS[Math.min(battle.correctShots, GATE_POSITIONS.length - 1)]}%`,
-                }}
-                aria-hidden="true"
-              >
-                <span />
-                <strong>{battle.correctShots + 1}</strong>
-              </div>
-            )}
-
-            <div className="side-scroll-shot-lane">
-              {isHeatVisionFiring && (
-                <span
-                  className="heat-vision-beam"
-                  style={{
-                    left: `${Math.min(runnerX + 4, 90)}%`,
-                    width: `${Math.max(5, laserEndPosition - (runnerX + 4))}%`,
-                  }}
-                >
-                  <i className="beam-core" />
-                  <i className="beam-flare" />
-                </span>
-              )}
-              {bossAttacking && <span className="enemy-shot" />}
-            </div>
-
-            <div className="battle-characters">
-              <div className="battle-boss-wrap">
-                <BossSprite
-                  health={bossHealth}
-                  hit={bossHit}
-                  attacking={bossAttacking}
-                />
-                <span className="character-name">BOSS</span>
-              </div>
-            </div>
-
-            <div className="battle-ground">
-              <span /><span /><span /><span /><span /><span /><span /><span />
-            </div>
-            </div>
-
-            {atGate && (
-              <div
-                className="logic-choice-card"
-                role="dialog"
-                aria-label="Quick binary search decision"
-              >
-                <div className="logic-choice-heading">
-                  <span>{currentRound === 1 ? "QUICK SCAN" : "BOSS SCAN"}</span>
-                  <strong>
-                    Middle <b>{midpointValue}</b> vs target <b>{TARGET}</b>
-                  </strong>
-                </div>
-                <div className="logic-range" aria-label="Current search range">
-                  {VALUES.slice(battle.low, battle.high + 1).map((value) => (
-                    <span
-                      key={value}
-                      className={value === midpointValue ? "range-midpoint" : ""}
-                    >
-                      {value}
-                    </span>
-                  ))}
-                </div>
-                <p>Where can {TARGET} still be?</p>
-                <div className="direction-choices">
-                  <button
-                    type="button"
-                    className={wrongDecision === "left" ? "wrong-direction" : ""}
-                    onClick={() => chooseDirection("left")}
-                  >
-                    <ArrowLeft size={18} /> LEFT
-                  </button>
-                  <button
-                    type="button"
-                    className={wrongDecision === "found" ? "wrong-direction" : ""}
-                    onClick={() => chooseDirection("found")}
-                  >
-                    <Target size={18} /> FOUND
-                  </button>
-                  <button
-                    type="button"
-                    className={wrongDecision === "right" ? "wrong-direction" : ""}
-                    onClick={() => chooseDirection("right")}
-                  >
-                    RIGHT <ArrowRight size={18} />
-                  </button>
-                </div>
-                <button
-                  className="micro-hint"
-                  type="button"
-                  onClick={() => setHintOpen((open) => !open)}
-                >
-                  <Lightbulb size={14} />
-                  {hintOpen
-                    ? `${midpointValue} is ${midpointValue < TARGET ? "smaller" : "larger"} than ${TARGET}.`
-                    : "Need one hint?"}
-                </button>
-              </div>
-            )}
-          </section>
-
-          <section className="decision-panel compact-game-panel">
-            <div className="gameplay-summary">
-              <span className="section-label">
-                <Play size={14} /> LEVEL 1-1 FLOW
-              </span>
-              <h2>Run. Jump. Make two direction calls. Blast the boss.</h2>
-              <p>
-                The scanner shows each midpoint. You only decide which half can
-                still contain 42, then the platforming resumes immediately.
-              </p>
-              <div className="control-legend">
-                <span><kbd>A / D</kbd> move</span>
-                <span><kbd>SPACE</kbd> jump up</span>
-                <span><kbd>F</kbd> laser bugs</span>
-              </div>
-            </div>
-
-            <div className="feedback-bar">
-              <span className={battle.status === "won" ? "feedback-icon won" : "feedback-icon"}>
-                {battle.status === "won" ? <Trophy size={19} /> : <BookOpen size={19} />}
-              </span>
-              <p aria-live="polite">{feedback}</p>
-              <div className="complexity-chip">
-                <Code2 size={14} />
-                FAST · O(log n)
-              </div>
-            </div>
-          </section>
-
-          {battle.status === "won" && (
-            <div className="result-overlay" role="dialog" aria-modal="true" aria-label="Level complete">
-              <div className="result-card victory-card">
-                <div className="result-trophy"><Trophy size={34} /></div>
-                <span>LEVEL 1 COMPLETE</span>
-                <h2>Glitch King defeated!</h2>
-                <p>
-                  You made two direction calls, narrowed seven values to one,
-                  then fired at 42. That is binary search: check the middle,
-                  choose a side, and repeat.
-                </p>
-                <div className="result-stats">
-                  <div><strong>+100</strong><span>XP earned</span></div>
-                  <div><strong>2</strong><span>direction calls</span></div>
-                  <div><strong>REDLINE</strong><span>laser unlocked</span></div>
-                </div>
-                <div className="result-actions">
-                  <button className="game-secondary" type="button" onClick={startBattle}>
-                    <RotateCcw size={16} /> Play again
-                  </button>
-                  <button className="game-primary" type="button" onClick={() => changeView("world")}>
-                    View next level <ArrowRight size={17} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {battle.status === "lost" && (
-            <div className="result-overlay" role="dialog" aria-modal="true" aria-label="Try again">
-              <div className="result-card retry-card">
-                <div className="result-trophy"><Shield size={34} /></div>
-                <span>FOCUS DEPLETED</span>
-                <h2>Checkpoint reached.</h2>
-                <p>
-                  Mistakes are part of learning. Compare the shown middle value
-                  with 42, then choose the only direction that can still work.
-                </p>
-                <div className="result-actions">
-                  <button className="game-secondary" type="button" onClick={startLesson}>
-                    <BookOpen size={16} /> Review lesson
-                  </button>
-                  <button className="game-primary" type="button" onClick={startBattle}>
-                    <RotateCcw size={16} /> Try again
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </main>
+        <CanvasPlatformer
+          playerName={username || "NOVA"}
+          soundOn={soundOn}
+          onComplete={handleGameComplete}
+          onExit={() => changeView("world")}
+        />
       )}
 
       {view === "world" && (
@@ -2152,12 +823,12 @@ export function AlgoRift() {
           <div className="world-heading">
             <div>
               <span className="section-label"><Map size={15} /> World map</span>
-              <h1>Your algorithm adventure</h1>
-              <p>Play the first chapter and preview the campaign roadmap.</p>
+              <h1>AlgoRift campaign</h1>
+              <p>Each world turns one algorithm family into a different game system.</p>
             </div>
             <div className="world-summary">
               <strong>{progress.completedLevel} / {worlds.length}</strong>
-              <span>levels cleared</span>
+              <span>worlds cleared</span>
             </div>
           </div>
 
@@ -2177,26 +848,33 @@ export function AlgoRift() {
                   key={world.level}
                 >
                   <div className="level-node">
-                    {complete ? <Check size={20} /> : available ? world.level : <LockKeyhole size={18} />}
+                    {complete ? (
+                      <Check size={20} />
+                    ) : available ? (
+                      world.level
+                    ) : (
+                      <LockKeyhole size={18} />
+                    )}
                   </div>
                   <div className="level-card">
                     <div className="level-card-top">
-                      <span>LEVEL {world.level}</span>
-                      <span>{complete ? "CLEARED" : available ? "AVAILABLE" : "COMING SOON"}</span>
+                      <span>WORLD {world.level}</span>
+                      <span>
+                        {complete ? "CLEARED" : available ? "AVAILABLE" : "IN DEVELOPMENT"}
+                      </span>
                     </div>
                     <small>{world.realm}</small>
                     <h2>{world.title}</h2>
                     <strong>{world.topics}</strong>
                     <p>{world.description}</p>
                     {available ? (
-                      <button type="button" onClick={startLesson}>
-                        {complete ? "Replay level" : "Start level"}
+                      <button type="button" onClick={() => changeView("battle")}>
+                        {complete ? "Replay world" : "Enter world"}
                         <ArrowRight size={16} />
                       </button>
                     ) : (
                       <span className="unlock-note">
-                        <LockKeyhole size={14} />
-                        Planned chapter · playable level in development
+                        <LockKeyhole size={14} /> Planned playable world
                       </span>
                     )}
                   </div>
@@ -2206,28 +884,49 @@ export function AlgoRift() {
           </section>
 
           <div className="world-footer-actions">
-            <button className="game-secondary" type="button" onClick={() => changeView("home")}>
+            <button
+              className="game-secondary"
+              type="button"
+              onClick={() => changeView("home")}
+            >
               <ArrowLeft size={17} /> Back home
             </button>
-            <button className="reset-progress" type="button" onClick={() => setShowResetConfirm(true)}>
+            <button
+              className="reset-progress"
+              type="button"
+              onClick={() => setShowResetConfirm(true)}
+            >
               Reset my progress
             </button>
           </div>
 
           {showResetConfirm && (
-            <div className="result-overlay" role="dialog" aria-modal="true" aria-label="Reset progress">
+            <div
+              className="result-overlay"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Reset progress"
+            >
               <div className="result-card reset-card">
                 <span>RESET SAVE DATA?</span>
-                <h2>Return to Level 1</h2>
+                <h2>Return to World 1</h2>
                 <p>
-                  This removes earned XP, the Redline unlock, and completed
-                  levels {user ? "from this account and device" : "from this device"}.
+                  This removes earned XP and completed worlds
+                  {user ? " from this account and device" : " from this device"}.
                 </p>
                 <div className="result-actions">
-                  <button className="game-secondary" type="button" onClick={() => setShowResetConfirm(false)}>
+                  <button
+                    className="game-secondary"
+                    type="button"
+                    onClick={() => setShowResetConfirm(false)}
+                  >
                     Cancel
                   </button>
-                  <button className="danger-button" type="button" onClick={resetProgress}>
+                  <button
+                    className="danger-button"
+                    type="button"
+                    onClick={resetProgress}
+                  >
                     Reset progress
                   </button>
                 </div>
@@ -2237,29 +936,305 @@ export function AlgoRift() {
         </main>
       )}
 
-      <footer className="game-footer">
-        <div className="footer-brand">
-          <BrandMark />
-          <div>
-            <strong>AlgoRift</strong>
-            <span>Learn by playing the decisions.</span>
+      {view !== "battle" && (
+        <footer className="game-footer">
+          <div className="footer-brand">
+            <BrandMark />
+            <div>
+              <strong>AlgoRift</strong>
+              <span>Algorithms built into the game system.</span>
+            </div>
           </div>
-        </div>
-        <p className="creator-mark">
-          Designed and developed by <strong>Immanuel Gnanaseelan</strong>
-        </p>
-        <div className="footer-links">
-          <span className="footer-security">
-            <Shield size={15} /> Secure cloud saves
-          </span>
-          <a href="https://github.com/immanuelgn/AlgoRift" target="_blank" rel="noreferrer">
-            <Github size={16} /> GitHub
-          </a>
-          <a href="https://algorift.vercel.app" target="_blank" rel="noreferrer">
-            Live project <ArrowRight size={15} />
-          </a>
-        </div>
-      </footer>
+          <p className="creator-mark">
+            Designed and developed by <strong>Immanuel Gnanaseelan</strong>
+          </p>
+          <div className="footer-links">
+            <span className="footer-security">
+              <Shield size={15} /> Secure cloud saves
+            </span>
+            <a
+              href="https://github.com/immanuelgn/AlgoRift"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Github size={16} /> GitHub
+            </a>
+            <a href="https://algorift.vercel.app" target="_blank" rel="noreferrer">
+              Live project <ArrowRight size={15} />
+            </a>
+          </div>
+        </footer>
+      )}
+    </div>
+  );
+}
+
+type AccountDialogProps = {
+  authBusy: boolean;
+  authError: string;
+  authForm: { username: string; email: string; password: string };
+  authMessage: string;
+  authMode: "signIn" | "signUp" | "forgot" | "recovery";
+  cloudStatus: "local" | "loading" | "saving" | "saved" | "error";
+  displayLevel: number;
+  progress: PlayerProgress;
+  showPassword: boolean;
+  user: User | null;
+  username: string;
+  onClose: () => void;
+  onModeChange: (mode: AccountDialogProps["authMode"]) => void;
+  onPasswordVisibility: () => void;
+  onSignOut: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onUpdateField: (
+    field: "username" | "email" | "password",
+    value: string,
+  ) => void;
+};
+
+function AccountDialog({
+  authBusy,
+  authError,
+  authForm,
+  authMessage,
+  authMode,
+  cloudStatus,
+  displayLevel,
+  progress,
+  showPassword,
+  user,
+  username,
+  onClose,
+  onModeChange,
+  onPasswordVisibility,
+  onSignOut,
+  onSubmit,
+  onUpdateField,
+}: AccountDialogProps) {
+  return (
+    <div
+      className="result-overlay account-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label="AlgoRift account"
+    >
+      <section className="account-card">
+        <button
+          type="button"
+          className="account-close"
+          onClick={onClose}
+          aria-label="Close account"
+        >
+          ×
+        </button>
+
+        {user ? (
+          <>
+            <div className="account-identity">
+              <span className="account-avatar"><UserRound size={25} /></span>
+              <div>
+                <small>CLOUD PATHFINDER</small>
+                <h2>{username || "Pathfinder"}</h2>
+                <p>{user.email}</p>
+              </div>
+            </div>
+
+            <div className={`cloud-save-state state-${cloudStatus}`}>
+              {cloudStatus === "error" ? (
+                <CloudOff size={18} />
+              ) : cloudStatus === "saving" || cloudStatus === "loading" ? (
+                <Cloud size={18} />
+              ) : (
+                <Save size={18} />
+              )}
+              <div>
+                <strong>
+                  {cloudStatus === "saving"
+                    ? "Saving progress..."
+                    : cloudStatus === "loading"
+                      ? "Loading cloud save..."
+                      : cloudStatus === "error"
+                        ? "Cloud sync needs attention"
+                        : "Progress saved"}
+                </strong>
+                <span>
+                  Level {displayLevel} · {progress.xp} XP · private to this account
+                </span>
+              </div>
+            </div>
+
+            <div className="account-security-note">
+              <Shield size={18} />
+              Passwords are handled by Supabase Auth and are never stored by AlgoRift.
+            </div>
+            <button
+              className="game-secondary account-signout"
+              type="button"
+              onClick={onSignOut}
+              disabled={authBusy}
+            >
+              <LogOut size={17} /> Sign out
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="account-heading">
+              <span className="account-avatar">
+                {authMode === "signUp" ? (
+                  <Sparkles size={25} />
+                ) : (
+                  <KeyRound size={25} />
+                )}
+              </span>
+              <div>
+                <small>OPTIONAL CLOUD SAVE</small>
+                <h2>
+                  {authMode === "signUp"
+                    ? "Create your Pathfinder"
+                    : authMode === "forgot"
+                      ? "Reset your password"
+                      : authMode === "recovery"
+                        ? "Choose a new password"
+                        : "Welcome back"}
+                </h2>
+              </div>
+            </div>
+
+            {!isSupabaseConfigured && (
+              <div className="auth-message auth-warning">
+                {supabaseConfigurationError ||
+                  "Cloud accounts are not configured. Guest saves still work."}
+              </div>
+            )}
+
+            <form className="auth-form" onSubmit={onSubmit}>
+              {authMode === "signUp" && (
+                <label>
+                  <span>Username</span>
+                  <div className="auth-input">
+                    <UserRound size={17} />
+                    <input
+                      type="text"
+                      value={authForm.username}
+                      onChange={(event) =>
+                        onUpdateField("username", event.target.value)
+                      }
+                      placeholder="pathfinder_01"
+                      autoComplete="username"
+                      minLength={3}
+                      maxLength={20}
+                      pattern="[a-z0-9_]{3,20}"
+                      required
+                    />
+                  </div>
+                  <small>3-20 lowercase letters, numbers, or underscores.</small>
+                </label>
+              )}
+
+              {authMode !== "recovery" && (
+                <label>
+                  <span>Email</span>
+                  <div className="auth-input">
+                    <Mail size={17} />
+                    <input
+                      type="email"
+                      value={authForm.email}
+                      onChange={(event) =>
+                        onUpdateField("email", event.target.value)
+                      }
+                      placeholder="you@example.com"
+                      autoComplete="email"
+                      required
+                    />
+                  </div>
+                  {authMode === "signUp" && (
+                    <small>A confirmation email is required before sign in.</small>
+                  )}
+                </label>
+              )}
+
+              {authMode !== "forgot" && (
+                <label>
+                  <span>
+                    {authMode === "recovery" ? "New password" : "Password"}
+                  </span>
+                  <div className="auth-input">
+                    <KeyRound size={17} />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={authForm.password}
+                      onChange={(event) =>
+                        onUpdateField("password", event.target.value)
+                      }
+                      placeholder="10+ characters"
+                      autoComplete={
+                        authMode === "signUp" || authMode === "recovery"
+                          ? "new-password"
+                          : "current-password"
+                      }
+                      minLength={10}
+                      pattern="(?=.*[A-Za-z])(?=.*\d).{10,}"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={onPasswordVisibility}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                    </button>
+                  </div>
+                  <small>Use 10+ characters with at least one letter and number.</small>
+                </label>
+              )}
+
+              {authError && <div className="auth-message auth-error">{authError}</div>}
+              {authMessage && (
+                <div className="auth-message auth-success">{authMessage}</div>
+              )}
+
+              <button
+                className="game-primary auth-submit"
+                type="submit"
+                disabled={authBusy || !isSupabaseConfigured}
+              >
+                {authBusy ? (
+                  "Working..."
+                ) : authMode === "signUp" ? (
+                  <><Sparkles size={17} /> Create account</>
+                ) : authMode === "forgot" ? (
+                  <><Mail size={17} /> Send reset email</>
+                ) : authMode === "recovery" ? (
+                  <><Shield size={17} /> Update password</>
+                ) : (
+                  <><LogIn size={17} /> Sign in</>
+                )}
+              </button>
+            </form>
+
+            <div className="auth-switches">
+              {authMode === "signIn" && (
+                <>
+                  <button type="button" onClick={() => onModeChange("signUp")}>
+                    Create an account
+                  </button>
+                  <button type="button" onClick={() => onModeChange("forgot")}>
+                    Forgot password?
+                  </button>
+                </>
+              )}
+              {(authMode === "signUp" || authMode === "forgot") && (
+                <button type="button" onClick={() => onModeChange("signIn")}>
+                  Back to sign in
+                </button>
+              )}
+            </div>
+            <p className="guest-note">
+              Accounts are optional. Guest progress remains on this device.
+            </p>
+          </>
+        )}
+      </section>
     </div>
   );
 }
