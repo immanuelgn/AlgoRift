@@ -5,6 +5,8 @@
 [Play AlgoRift](https://algorift.vercel.app) ·
 [View the source](https://github.com/immanuelgn/AlgoRift)
 
+![AlgoRift interactive algorithm adventure](public/algorift-preview.png)
+
 AlgoRift is an interactive data structures and algorithms adventure. Instead
 of presenting algorithms as static diagrams, it turns each concept into a
 playable decision system with worlds, combat rules, progression, and immediate
