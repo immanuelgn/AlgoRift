@@ -19,12 +19,34 @@ Level 1, **Binary Blaster**, teaches binary search through a complete game loop:
 - Move left and right, jump over obstacles, and reach scanner gates.
 - Calculate each midpoint without a highlighted answer.
 - Receive precise teaching feedback after an incorrect choice.
-- Turn correct decisions into attacks against the Glitch King.
-- Earn XP and save real progress locally after defeating the boss.
+- Charge Redline Vision by making two correct midpoint decisions.
+- Fire the earned power during the final boss encounter.
+- Earn XP and save progress locally or to a secure account.
 
 The level checks `17`, then `31`, then `42`, visibly eliminating the impossible
 half of the array after each comparison. Keyboard and touch controls are
-supported.
+supported. Redline Vision is an original audiovisual effect built with CSS and
+the Web Audio API. It never highlights an answer, removes a learning step, or
+replaces the player's calculation.
+
+## Accounts and progress
+
+Players can use guest mode without creating an account. Optional Supabase
+accounts add:
+
+- Email and password authentication
+- A unique public username
+- Email verification and password recovery
+- Cloud-synced level, XP, and power-up progress
+- Automatic reconciliation between local and cloud progress
+
+Passwords are handled by Supabase Auth and are never stored in AlgoRift's
+database. Row Level Security ensures that each signed-in player can access only
+their own profile and progress.
+
+Public confirmation and password-reset emails require a custom SMTP provider
+in Supabase. The built-in Supabase sender is suitable only for project-team
+testing. Guest saves remain available while email delivery is being configured.
 
 ## Campaign roadmap
 
@@ -48,12 +70,10 @@ pre-completed.
 - Custom responsive CSS artwork and animation
 - Web Audio API sound effects
 - Keyboard and touch controls
-- Local storage progress persistence
+- Supabase Auth, Postgres, and Row Level Security
+- Local guest saves and authenticated cloud saves
 - Lucide icons
 - Vercel hosting
-
-The current release is fully client-side and does not require a database,
-account, or environment variables.
 
 ## Run locally
 
@@ -62,7 +82,32 @@ npm install
 npm run dev
 ```
 
+Guest mode works immediately. To test accounts and cloud saves, create
+`.env.local` from `.env.example` and provide the browser-safe Supabase project
+URL and publishable key:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=your-project-url
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+```
+
+Then run the database setup in the Supabase SQL Editor:
+
+```text
+supabase/algorift_setup.sql
+```
+
+Start the app:
+
+```bash
+npm run dev
+```
+
 Open [http://localhost:3000](http://localhost:3000).
+
+Do not expose a Supabase secret key, service-role key, or database password in
+the browser or in a `NEXT_PUBLIC_*` variable. See [SECURITY.md](SECURITY.md)
+for the complete security checklist.
 
 ## Quality checks
 
@@ -80,7 +125,6 @@ npm audit
 - Tree traversal climbing level
 - Dijkstra shortest-path boss fight
 - Dynamic programming crafting level
-- Optional Supabase accounts and cloud saves
 - Shareable completion cards
 
 Designed and developed by
