@@ -46,7 +46,7 @@ import {
   supabaseConfigurationError,
 } from "@/lib/supabase";
 
-type View = "home" | "battle" | "sort" | "world";
+type View = "home" | "battle" | "sort" | "prototype" | "world";
 
 type PlayerProgress = {
   completedLevel: number;
@@ -55,7 +55,6 @@ type PlayerProgress = {
 };
 
 const STORAGE_KEY = "algorift-progress-v2";
-const PLAYABLE_WORLD_COUNT = 2;
 const DEFAULT_PROGRESS: PlayerProgress = {
   completedLevel: 0,
   xp: 0,
@@ -123,6 +122,8 @@ const worlds = [
     description: "Cache past states and rebuild a damaged system.",
   },
 ];
+
+type WorldDefinition = (typeof worlds)[number];
 
 function normalizeProgress(value: Partial<PlayerProgress> | null | undefined) {
   return {
@@ -254,6 +255,7 @@ export function AlgoRift() {
   const [authError, setAuthError] = useState("");
   const [user, setUser] = useState<User | null>(null);
   const [username, setUsername] = useState("");
+  const [selectedWorldLevel, setSelectedWorldLevel] = useState(3);
   const [cloudHydrated, setCloudHydrated] = useState(false);
   const [cloudStatus, setCloudStatus] = useState<
     "local" | "loading" | "saving" | "saved" | "error"
@@ -423,22 +425,16 @@ export function AlgoRift() {
     return () => window.clearTimeout(timer);
   }, [cloudHydrated, progress, user]);
 
-  const displayLevel = Math.max(1, progress.completedLevel + 1);
-  const nextPlayableWorld = progress.completedLevel >= 1 ? 2 : 1;
-  const nextMission =
-    nextPlayableWorld === 1
-      ? {
-          label: "1-1",
-          title: "Boot Sequence",
-          topics: "Binary Search - Momentum - System Override",
-          reward: "+250 XP",
-        }
-      : {
-          label: "2-1",
-          title: "Sort Circuit",
-          topics: "Bubble Sort - Compare - Swap",
-          reward: "+180 XP",
-        };
+  const displayLevel = Math.max(1, Math.min(worlds.length, progress.completedLevel + 1));
+  const nextPlayableWorld = Math.min(worlds.length, progress.completedLevel + 1);
+  const nextWorld = worlds[nextPlayableWorld - 1] ?? worlds[0];
+  const selectedWorld = worlds.find((world) => world.level === selectedWorldLevel) ?? worlds[2];
+  const nextMission = {
+    label: `${nextWorld.level}-1`,
+    title: nextWorld.level === 1 ? "Boot Sequence" : nextWorld.title,
+    topics: nextWorld.topics,
+    reward: nextWorld.level === 1 ? "+250 XP" : `+${180 + nextWorld.level * 60} XP`,
+  };
 
   function changeView(nextView: View) {
     setView(nextView);
@@ -458,13 +454,17 @@ export function AlgoRift() {
   }
 
   function startWorld(level: number) {
+    if (level > progress.completedLevel + 1) return;
     if (level === 1) {
       changeView("battle");
       return;
     }
     if (level === 2 && progress.completedLevel >= 1) {
       changeView("sort");
+      return;
     }
+    setSelectedWorldLevel(level);
+    changeView("prototype");
   }
 
   const handleGameComplete = useCallback(
@@ -723,11 +723,9 @@ export function AlgoRift() {
                   onClick={() => startWorld(nextPlayableWorld)}
                 >
                   <Play size={18} fill="currentColor" />
-                  {progress.completedLevel === 0
-                    ? "Enter World 1"
-                    : progress.completedLevel === 1
-                      ? "Enter World 2"
-                      : "Replay World 2"}
+                  {progress.completedLevel >= worlds.length
+                    ? `Replay World ${worlds.length}`
+                    : `Enter World ${nextPlayableWorld}`}
                 </button>
                 <button
                   className="game-secondary"
@@ -871,9 +869,9 @@ export function AlgoRift() {
               <h2>
                 {progress.completedLevel === 0
                   ? "World 1 is ready."
-                  : progress.completedLevel === 1
-                    ? "World 2 is unlocked."
-                    : "World 2 sort circuit secured."}
+                  : progress.completedLevel >= worlds.length
+                    ? "All current worlds are cleared."
+                    : `World ${progress.completedLevel + 1} is unlocked.`}
               </h2>
               <p>
                 {user
@@ -887,7 +885,7 @@ export function AlgoRift() {
                 <strong>{progress.completedLevel} / {worlds.length}</strong>
               </div>
               <div className="campaign-track">
-                <span style={{ width: `${(progress.completedLevel / 7) * 100}%` }} />
+                <span style={{ width: `${(progress.completedLevel / worlds.length) * 100}%` }} />
               </div>
               <button type="button" onClick={() => changeView("world")}>
                 Open world map <ArrowRight size={16} />
@@ -913,6 +911,14 @@ export function AlgoRift() {
         />
       )}
 
+      {view === "prototype" && (
+        <PrototypeWorld
+          world={selectedWorld}
+          onComplete={handleGameComplete}
+          onExit={() => changeView("world")}
+        />
+      )}
+
       {view === "world" && (
         <main className="world-view">
           <div className="world-heading">
@@ -931,10 +937,7 @@ export function AlgoRift() {
             <div className="path-line" />
             {worlds.map((world) => {
               const complete = progress.completedLevel >= world.level;
-              const playable =
-                world.level <= PLAYABLE_WORLD_COUNT &&
-                world.level <= progress.completedLevel + 1;
-              const inDevelopment = world.level > PLAYABLE_WORLD_COUNT;
+              const playable = world.level <= progress.completedLevel + 1;
               return (
                 <article
                   className={[
@@ -962,9 +965,7 @@ export function AlgoRift() {
                           ? "CLEARED"
                           : playable
                             ? "PLAYABLE"
-                            : inDevelopment
-                              ? "IN DEVELOPMENT"
-                              : "LOCKED"}
+                            : "LOCKED"}
                       </span>
                     </div>
                     <small>{world.realm}</small>
@@ -979,7 +980,7 @@ export function AlgoRift() {
                     ) : (
                       <span className="unlock-note">
                         <LockKeyhole size={14} />
-                        {inDevelopment ? " Planned playable world" : " Clear the prior world"}
+                        Clear the prior world
                       </span>
                     )}
                   </div>
@@ -1208,6 +1209,113 @@ function SortCircuit({ onExit, onComplete }: SortCircuitProps) {
                 <strong>+180 XP</strong>
                 <strong>{moves} SWAPS</strong>
                 <strong>WORLD 2</strong>
+              </div>
+              <button type="button" onClick={onExit}>
+                Return to world map <ArrowRight size={17} />
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}
+
+type PrototypeWorldProps = {
+  world: WorldDefinition;
+  onExit: () => void;
+  onComplete: (payload: PlayerProgress) => void;
+};
+
+function PrototypeWorld({ world, onExit, onComplete }: PrototypeWorldProps) {
+  const [step, setStep] = useState(0);
+  const [complete, setComplete] = useState(false);
+  const lessonSteps = [
+    `Read the world rule: ${world.topics}.`,
+    "Find the terminal, solve the intended mechanic, then watch the route change.",
+    "Clear the end gate to unlock the next world.",
+  ];
+
+  function advance() {
+    const finalStep = step >= lessonSteps.length - 1;
+    if (!finalStep) {
+      setStep((current) => current + 1);
+      return;
+    }
+
+    setComplete(true);
+    onComplete({
+      completedLevel: world.level,
+      xp: Math.max(250, 180 + world.level * 120),
+      redlineVisionUnlocked: true,
+    });
+  }
+
+  function resetPrototype() {
+    setStep(0);
+    setComplete(false);
+  }
+
+  return (
+    <main className="prototype-world-view">
+      <header className="canvas-game-toolbar">
+        <button type="button" onClick={onExit}>
+          <ArrowLeft size={17} /> Exit
+        </button>
+        <div>
+          <span>WORLD {world.level}</span>
+          <strong>{world.title}</strong>
+        </div>
+        <button type="button" onClick={resetPrototype}>
+          <RotateCcw size={16} /> Restart
+        </button>
+      </header>
+
+      <section className={`prototype-world-shell world-${world.color}`}>
+        <div className="prototype-side-scroll" aria-hidden="true">
+          <div className="prototype-runner"><PlayerSprite powered /></div>
+          <div className="prototype-terminal">
+            <Terminal size={24} />
+            <span>HACK</span>
+          </div>
+          <div className={complete ? "prototype-gate open" : "prototype-gate"}>
+            <LockKeyhole size={28} />
+          </div>
+          <div className="prototype-flag">EXIT</div>
+        </div>
+
+        <aside className="prototype-panel">
+          <span>GUEST CAMPAIGN ACCESS</span>
+          <h1>{world.title}</h1>
+          <strong>{world.topics}</strong>
+          <p>{world.description}</p>
+          <div className="prototype-lesson">
+            <small>TERMINAL STEP {step + 1} / {lessonSteps.length}</small>
+            <p>{lessonSteps[step]}</p>
+          </div>
+          <button type="button" onClick={advance}>
+            {step >= lessonSteps.length - 1 ? "Clear world" : "Hack next step"}
+            <ArrowRight size={17} />
+          </button>
+          <small>
+            This is a playable progression bridge for the next platformer world.
+            Guest saves unlock the next card immediately.
+          </small>
+        </aside>
+
+        {complete && (
+          <div className="canvas-complete" role="dialog" aria-label={`${world.title} complete`}>
+            <div>
+              <span>WORLD {world.level} CLEAR</span>
+              <h2>Next world unlocked.</h2>
+              <p>
+                Guest progress was saved locally. Accounts sync the same unlock
+                path to Supabase.
+              </p>
+              <div className="canvas-complete-stats">
+                <strong>WORLD {world.level}</strong>
+                <strong>{world.topics.split(" - ")[0]}</strong>
+                <strong>UNLOCKED</strong>
               </div>
               <button type="button" onClick={onExit}>
                 Return to world map <ArrowRight size={17} />
