@@ -1,856 +1,1158 @@
 "use client";
 
 import {
+  ArrowLeft,
   ArrowRight,
-  Binary,
   BookOpen,
-  Brain,
   Check,
   ChevronRight,
   CircleHelp,
-  Clock3,
   Code2,
   Compass,
-  Crown,
-  Flame,
-  Gamepad2,
+  Crosshair,
   Github,
+  Heart,
+  Home,
   Lightbulb,
-  ListTree,
   LockKeyhole,
   Map,
-  Menu,
-  Network,
   Play,
   RotateCcw,
-  Route,
   Shield,
   Sparkles,
-  Swords,
   Target,
   Trophy,
-  Waypoints,
-  X,
+  Volume2,
+  VolumeX,
   Zap,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-type NodeId = "S" | "A" | "B" | "C" | "D" | "E" | "F" | "CORE";
-type Distances = Record<NodeId, number>;
-type Predecessors = Partial<Record<NodeId, NodeId>>;
+type View = "home" | "lesson" | "battle" | "world";
 
-const nodes: Record<NodeId, { x: number; y: number; label: string }> = {
-  S: { x: 68, y: 218, label: "START" },
-  A: { x: 220, y: 92, label: "A" },
-  B: { x: 205, y: 330, label: "B" },
-  C: { x: 420, y: 70, label: "C" },
-  D: { x: 362, y: 225, label: "D" },
-  E: { x: 400, y: 365, label: "E" },
-  F: { x: 565, y: 205, label: "F" },
-  CORE: { x: 670, y: 320, label: "CORE" },
+type PlayerProgress = {
+  completedLevel: number;
+  xp: number;
 };
 
-const edges: Array<{ from: NodeId; to: NodeId; weight: number }> = [
-  { from: "S", to: "A", weight: 4 },
-  { from: "S", to: "B", weight: 2 },
-  { from: "B", to: "A", weight: 1 },
-  { from: "B", to: "D", weight: 4 },
-  { from: "B", to: "E", weight: 7 },
-  { from: "A", to: "C", weight: 5 },
-  { from: "A", to: "D", weight: 2 },
-  { from: "D", to: "C", weight: 1 },
-  { from: "D", to: "E", weight: 3 },
-  { from: "D", to: "F", weight: 6 },
-  { from: "C", to: "F", weight: 3 },
-  { from: "E", to: "F", weight: 1 },
-  { from: "E", to: "CORE", weight: 5 },
-  { from: "F", to: "CORE", weight: 2 },
+type BattleState = {
+  low: number;
+  high: number;
+  hearts: number;
+  correctShots: number;
+  status: "playing" | "won" | "lost";
+};
+
+const STORAGE_KEY = "algorift-progress-v2";
+const VALUES = [3, 8, 12, 17, 23, 31, 42];
+const TARGET = 42;
+const GATE_POSITIONS = [29, 54, 79];
+const OBSTACLE_POSITIONS = [17, 42, 67];
+
+const lessonSlides = [
+  {
+    number: "01",
+    eyebrow: "Meet the data",
+    title: "Binary search needs order.",
+    copy:
+      "A sorted array lets us rule out half the remaining values after every comparison. That is the source of its speed.",
+    visual: "sorted",
+    note: "Input requirement: values must already be sorted.",
+  },
+  {
+    number: "02",
+    eyebrow: "Choose the middle",
+    title: "Probe the midpoint.",
+    copy:
+      "Use floor((low + high) / 2) to choose an index. Compare that value with the target instead of checking every item.",
+    visual: "midpoint",
+    note: "mid = floor((0 + 6) / 2) = 3",
+  },
+  {
+    number: "03",
+    eyebrow: "Cut the search space",
+    title: "Discard the impossible half.",
+    copy:
+      "If the midpoint is too small, move low to mid + 1. If it is too large, move high to mid - 1. Repeat until found.",
+    visual: "discard",
+    note: "Each decision removes roughly half the remaining work.",
+  },
 ];
 
-const initialDistances: Distances = {
-  S: 0,
-  A: Infinity,
-  B: Infinity,
-  C: Infinity,
-  D: Infinity,
-  E: Infinity,
-  F: Infinity,
-  CORE: Infinity,
-};
-
-const adjacency = (() => {
-  const map = {} as Record<
-    NodeId,
-    Array<{ node: NodeId; weight: number }>
-  >;
-  (Object.keys(nodes) as NodeId[]).forEach((node) => {
-    map[node] = [];
-  });
-  edges.forEach(({ from, to, weight }) => {
-    map[from].push({ node: to, weight });
-    map[to].push({ node: from, weight });
-  });
-  return map;
-})();
-
-const realms = [
+const worlds = [
   {
-    eyebrow: "Realm 01",
-    title: "Memory Marsh",
-    topic: "Arrays · Lists · Hash Maps",
-    copy: "Master storage, lookup, and the cost of moving data.",
-    icon: Binary,
-    status: "cleared",
+    level: 1,
+    title: "Binary Blaster",
+    realm: "Search Plains",
+    topics: "Arrays · Indexes · Binary Search",
+    color: "sun",
+    description: "Aim at the midpoint and cut the search space in half.",
+  },
+  {
+    level: 2,
+    title: "Sort Sprint",
+    realm: "Sort Summit",
+    topics: "Bubble · Merge · Quick Sort",
+    color: "sky",
+    description: "Race disorder by swapping, splitting, and merging.",
+  },
+  {
+    level: 3,
+    title: "Stack Tower",
+    realm: "Memory Mines",
+    topics: "Stacks · Queues · Hash Maps",
     color: "mint",
-    progress: "3 / 3",
+    description: "Build with LIFO, defend with FIFO, and unlock instant lookup.",
   },
   {
-    eyebrow: "Realm 02",
-    title: "Order Outpost",
-    topic: "Stacks · Queues · Heaps",
-    copy: "Control what enters first, leaves last, and rises to the top.",
-    icon: ListTree,
-    status: "cleared",
-    color: "blue",
-    progress: "4 / 4",
+    level: 4,
+    title: "Tree Climber",
+    realm: "Tree Canopy",
+    topics: "Trees · BST · Traversal",
+    color: "leaf",
+    description: "Climb branches using structure, order, and recursion.",
   },
   {
-    eyebrow: "Realm 03",
-    title: "Sortworks",
-    topic: "Sorting · Searching",
-    copy: "Race pivots, merges, and binary probes against the clock.",
-    icon: Target,
-    status: "cleared",
-    color: "orange",
-    progress: "5 / 5",
-  },
-  {
-    eyebrow: "Realm 04",
-    title: "Recursion Ruins",
-    topic: "Recursion · Backtracking",
-    copy: "Escape looping chambers by trusting the call stack.",
-    icon: RotateCcw,
-    status: "cleared",
+    level: 5,
+    title: "Weighted Warden",
+    realm: "Graph Citadel",
+    topics: "BFS · DFS · Dijkstra",
     color: "violet",
-    progress: "4 / 4",
+    description: "Navigate networks and defeat the shortest-path boss.",
   },
   {
-    eyebrow: "Realm 05",
-    title: "Graph Citadel",
-    topic: "BFS · DFS · Shortest Path",
-    copy: "Navigate weighted worlds and sever impossible routes.",
-    icon: Network,
-    status: "current",
-    color: "lime",
-    progress: "2 / 5",
-  },
-  {
-    eyebrow: "Realm 06",
-    title: "Treewilds",
-    topic: "Trees · Tries · BST",
-    copy: "Restore balance to a forest that grows by strict rules.",
-    icon: Waypoints,
-    status: "locked",
-    color: "teal",
-    progress: "0 / 5",
-  },
-  {
-    eyebrow: "Realm 07",
-    title: "Greedy Dunes",
-    topic: "Greedy · Intervals",
-    copy: "Make locally brilliant choices without losing the whole map.",
-    icon: Compass,
-    status: "locked",
+    level: 6,
+    title: "Choice Bandit",
+    realm: "Greedy Dunes",
+    topics: "Greedy · Intervals",
     color: "gold",
-    progress: "0 / 4",
+    description: "Make the strongest local move without losing the mission.",
   },
   {
-    eyebrow: "Realm 08",
-    title: "Dynamic Forge",
-    topic: "Dynamic Programming",
-    copy: "Cache old victories and craft answers from overlapping battles.",
-    icon: Brain,
-    status: "locked",
+    level: 7,
+    title: "Echo Forge",
+    realm: "Dynamic Forge",
+    topics: "Dynamic Programming",
     color: "rose",
-    progress: "0 / 6",
+    description: "Store past answers and craft solutions from smaller wins.",
   },
 ];
 
-const codex = [
-  ["Binary Search", "O(log n)", "Search", "Probe the sorted signal"],
-  ["Merge Sort", "O(n log n)", "Sort", "Rebuild order from halves"],
-  ["Quick Sort", "O(n log n)*", "Sort", "Rule the pivot chamber"],
-  ["Breadth-First", "O(V + E)", "Graph", "Sweep the nearest frontier"],
-  ["Depth-First", "O(V + E)", "Graph", "Descend before returning"],
-  ["Dijkstra", "O((V+E) log V)", "Graph", "Break the weighted maze"],
-  ["A* Search", "O(E)", "Graph", "Hunt with a heuristic"],
-  ["Topological Sort", "O(V + E)", "Graph", "Untangle dependencies"],
-  ["Kruskal", "O(E log E)", "Greedy", "Connect without cycles"],
-  ["Knapsack", "O(nW)", "Dynamic", "Spend capacity wisely"],
-  ["Longest Common Subsequence", "O(mn)", "Dynamic", "Find the hidden echo"],
-  ["KMP Search", "O(n + m)", "String", "Never re-read a mismatch"],
-];
-
-function formatDistance(value: number) {
-  return Number.isFinite(value) ? value : "∞";
+function getInitialBattle(): BattleState {
+  return {
+    low: 0,
+    high: VALUES.length - 1,
+    hearts: 3,
+    correctShots: 0,
+    status: "playing",
+  };
 }
 
-function edgeId(a: NodeId, b: NodeId) {
-  return [a, b].sort().join("-");
+function playTone(enabled: boolean, frequency: number, duration = 0.12) {
+  if (!enabled || typeof window === "undefined") return;
+  const AudioContextClass =
+    window.AudioContext ||
+    (
+      window as typeof window & {
+        webkitAudioContext?: typeof AudioContext;
+      }
+    ).webkitAudioContext;
+  if (!AudioContextClass) return;
+
+  const context = new AudioContextClass();
+  const oscillator = context.createOscillator();
+  const gain = context.createGain();
+  oscillator.type = "square";
+  oscillator.frequency.value = frequency;
+  gain.gain.setValueAtTime(0.05, context.currentTime);
+  gain.gain.exponentialRampToValueAtTime(
+    0.001,
+    context.currentTime + duration,
+  );
+  oscillator.connect(gain);
+  gain.connect(context.destination);
+  oscillator.start();
+  oscillator.stop(context.currentTime + duration);
+  oscillator.addEventListener("ended", () => void context.close());
+}
+
+function BrandMark() {
+  return (
+    <span className="brand-symbol" aria-hidden="true">
+      <span className="brand-pixel pixel-a" />
+      <span className="brand-pixel pixel-b" />
+      <span className="brand-pixel pixel-c" />
+      <span className="brand-pixel pixel-d" />
+      <span className="brand-core" />
+    </span>
+  );
+}
+
+function PlayerSprite({ hit = false }: { hit?: boolean }) {
+  return (
+    <div className={`player-sprite ${hit ? "sprite-hit" : ""}`} aria-hidden="true">
+      <div className="player-antenna" />
+      <div className="player-head">
+        <span className="player-eye eye-left" />
+        <span className="player-eye eye-right" />
+      </div>
+      <div className="player-body">
+        <span className="player-core" />
+      </div>
+      <div className="player-arm player-arm-left" />
+      <div className="player-cannon" />
+      <div className="player-leg player-leg-left" />
+      <div className="player-leg player-leg-right" />
+    </div>
+  );
+}
+
+function BossSprite({
+  health,
+  hit,
+  attacking,
+}: {
+  health: number;
+  hit: boolean;
+  attacking: boolean;
+}) {
+  return (
+    <div
+      className={[
+        "boss-sprite",
+        hit ? "boss-hit" : "",
+        attacking ? "boss-attacking" : "",
+        health <= 0 ? "boss-defeated" : "",
+      ].join(" ")}
+      aria-hidden="true"
+    >
+      <div className="boss-crown">
+        <span />
+        <span />
+        <span />
+      </div>
+      <div className="boss-horn boss-horn-left" />
+      <div className="boss-horn boss-horn-right" />
+      <div className="boss-face">
+        <span className="boss-eye boss-eye-left" />
+        <span className="boss-eye boss-eye-right" />
+        <span className="boss-mouth" />
+      </div>
+      <div className="boss-hand boss-hand-left" />
+      <div className="boss-hand boss-hand-right" />
+      <div className="boss-glitch glitch-one" />
+      <div className="boss-glitch glitch-two" />
+    </div>
+  );
+}
+
+function HeartMeter({ hearts }: { hearts: number }) {
+  return (
+    <div className="heart-meter" aria-label={`${hearts} focus points remaining`}>
+      {[0, 1, 2].map((heart) => (
+        <Heart
+          key={heart}
+          size={18}
+          fill={heart < hearts ? "currentColor" : "none"}
+          className={heart < hearts ? "heart-active" : "heart-empty"}
+        />
+      ))}
+    </div>
+  );
 }
 
 export function AlgoRift() {
-  const [visited, setVisited] = useState<NodeId[]>([]);
-  const [distances, setDistances] = useState<Distances>(initialDistances);
-  const [predecessors, setPredecessors] = useState<Predecessors>({});
-  const [focus, setFocus] = useState(100);
-  const [message, setMessage] = useState(
-    "Dijkstra begins at the source. Select START to lock its distance.",
+  const [view, setView] = useState<View>("home");
+  const [lessonStep, setLessonStep] = useState(0);
+  const [progress, setProgress] = useState<PlayerProgress>({
+    completedLevel: 0,
+    xp: 0,
+  });
+  const [ready, setReady] = useState(false);
+  const [soundOn, setSoundOn] = useState(true);
+  const [battle, setBattle] = useState<BattleState>(getInitialBattle);
+  const [feedback, setFeedback] = useState(
+    "Your mission: find 42. Calculate the midpoint, then choose that value.",
   );
-  const [logs, setLogs] = useState<string[]>([
-    "Rift initialized. The source distance is 0.",
-  ]);
-  const [wrongNode, setWrongNode] = useState<NodeId | null>(null);
-  const [hintsUsed, setHintsUsed] = useState(0);
-  const [won, setWon] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [hasPriorWin, setHasPriorWin] = useState(false);
-  const arenaRef = useRef<HTMLElement>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [wrongIndex, setWrongIndex] = useState<number | null>(null);
+  const [isShooting, setIsShooting] = useState(false);
+  const [bossHit, setBossHit] = useState(false);
+  const [bossAttacking, setBossAttacking] = useState(false);
+  const [playerHit, setPlayerHit] = useState(false);
+  const [hintOpen, setHintOpen] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [runnerX, setRunnerX] = useState(5);
+  const [jumping, setJumping] = useState(false);
+  const [obstacleBump, setObstacleBump] = useState(false);
+  const [atGate, setAtGate] = useState(false);
+  const pageTop = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
-      setHasPriorWin(window.localStorage.getItem("algorift-dijkstra-win") === "1");
+      const saved = window.localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          setProgress(JSON.parse(saved) as PlayerProgress);
+        } catch {
+          window.localStorage.removeItem(STORAGE_KEY);
+        }
+      }
+      setReady(true);
     });
     return () => window.cancelAnimationFrame(frame);
   }, []);
 
-  const expectedNode = (Object.keys(distances) as NodeId[])
-    .filter((node) => !visited.includes(node) && Number.isFinite(distances[node]))
-    .sort((a, b) => distances[a] - distances[b])[0];
+  useEffect(() => {
+    if (!ready) return;
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+  }, [progress, ready]);
 
-  const shortestPath = (() => {
-    if (!won) return [] as NodeId[];
-    const path: NodeId[] = ["CORE"];
-    let cursor: NodeId | undefined = "CORE";
-    while (cursor !== "S") {
-      cursor = predecessors[cursor];
-      if (!cursor) return [];
-      path.unshift(cursor);
+  useEffect(() => {
+    if (view !== "battle") return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "ArrowRight" || event.key.toLowerCase() === "d") {
+        event.preventDefault();
+        moveRunner(1);
+      }
+      if (event.key === "ArrowLeft" || event.key.toLowerCase() === "a") {
+        event.preventDefault();
+        moveRunner(-1);
+      }
+      if (event.key === " " || event.key === "ArrowUp" || event.key.toLowerCase() === "w") {
+        event.preventDefault();
+        jumpRunner();
+      }
     }
-    return path;
-  })();
 
-  const pathEdges = new Set(
-    shortestPath.slice(1).map((node, index) => edgeId(shortestPath[index], node)),
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  });
+
+  const midpoint = Math.floor((battle.low + battle.high) / 2);
+  const midpointValue = VALUES[midpoint];
+  const bossHealth = Math.max(0, 100 - battle.correctShots * 34);
+  const displayLevel = Math.max(1, progress.completedLevel + 1);
+  const currentSlide = lessonSlides[lessonStep];
+
+  const eliminated = useMemo(
+    () =>
+      VALUES.map((_, index) => index < battle.low || index > battle.high),
+    [battle.high, battle.low],
   );
 
-  const bossHealth = Math.max(
-    0,
-    Math.round(100 - (visited.length / Object.keys(nodes).length) * 100),
-  );
+  function changeView(nextView: View) {
+    setView(nextView);
+    setHintOpen(false);
+    window.requestAnimationFrame(() => {
+      pageTop.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
 
-  function handleNodeClick(node: NodeId) {
-    if (won || visited.includes(node)) return;
+  function startLesson() {
+    setLessonStep(0);
+    changeView("lesson");
+  }
 
-    if (node !== expectedNode) {
-      setWrongNode(node);
-      setFocus((current) => Math.max(0, current - 8));
-      setMessage(
-        `${nodes[node].label} is not the cheapest unsettled node. Dijkstra must choose the smallest known distance first.`,
-      );
-      setLogs((current) =>
-        [`Blocked: ${nodes[node].label} costs ${formatDistance(distances[node])}.`, ...current].slice(
-          0,
-          5,
-        ),
-      );
-      window.setTimeout(() => setWrongNode(null), 500);
+  function startBattle() {
+    setBattle(getInitialBattle());
+    setFeedback(
+      "Your mission: find 42. Calculate the midpoint, then choose that value.",
+    );
+    setSelectedIndex(null);
+    setWrongIndex(null);
+    setHintOpen(false);
+    setRunnerX(5);
+    setJumping(false);
+    setObstacleBump(false);
+    setAtGate(false);
+    changeView("battle");
+  }
+
+  function moveRunner(direction: -1 | 1) {
+    if (
+      battle.status !== "playing" ||
+      isShooting ||
+      bossAttacking ||
+      atGate
+    ) {
       return;
     }
 
-    const nextDistances = { ...distances };
-    const nextPredecessors = { ...predecessors };
-    const relaxations: string[] = [];
+    setRunnerX((current) => {
+      if (direction === -1) {
+        return Math.max(3, current - 3.5);
+      }
 
-    adjacency[node].forEach(({ node: neighbor, weight }) => {
-      if (visited.includes(neighbor)) return;
-      const candidate = distances[node] + weight;
-      if (candidate < nextDistances[neighbor]) {
-        const before = formatDistance(nextDistances[neighbor]);
-        nextDistances[neighbor] = candidate;
-        nextPredecessors[neighbor] = node;
-        relaxations.push(
-          `${nodes[neighbor].label}: ${before} → ${candidate} via ${nodes[node].label}`,
+      const stage = Math.min(battle.correctShots, GATE_POSITIONS.length - 1);
+      const gate = GATE_POSITIONS[stage];
+      const obstacle = OBSTACLE_POSITIONS[stage];
+      const next = Math.min(gate, current + 3.5);
+      const crossingObstacle = current < obstacle && next >= obstacle - 1.5;
+
+      if (crossingObstacle && !jumping) {
+        setObstacleBump(true);
+        setFeedback(
+          "A bug block is in the way. Jump, then keep moving right to reach the algorithm gate.",
+        );
+        playTone(soundOn, 135, 0.12);
+        window.setTimeout(() => setObstacleBump(false), 320);
+        return current;
+      }
+
+      if (next >= gate - 0.5) {
+        setAtGate(true);
+        setFeedback(
+          "Scanner gate reached. Calculate the midpoint below to unlock the path and charge your blaster.",
         );
       }
+      return next;
     });
+  }
 
-    const nextVisited = [...visited, node];
-    setVisited(nextVisited);
-    setDistances(nextDistances);
-    setPredecessors(nextPredecessors);
-    setWrongNode(null);
+  function jumpRunner() {
+    if (jumping || battle.status !== "playing" || atGate) return;
+    setJumping(true);
+    playTone(soundOn, 350, 0.1);
+    window.setTimeout(() => setJumping(false), 620);
+  }
 
-    if (node === "CORE") {
-      setWon(true);
-      setMessage(
-        "Core breached. You proved the shortest route costs 11 and never needed to explore a worse path twice.",
-      );
-      setLogs((current) =>
-        ["VICTORY: shortest route secured at cost 11.", ...current].slice(0, 5),
-      );
-      window.localStorage.setItem("algorift-dijkstra-win", "1");
-      setHasPriorWin(true);
+  function chooseValue(index: number) {
+    if (
+      battle.status !== "playing" ||
+      isShooting ||
+      bossAttacking ||
+      eliminated[index]
+    ) {
       return;
     }
 
-    const update =
-      relaxations.length > 0
-        ? `Locked ${nodes[node].label} at ${distances[node]}. Relaxed ${relaxations.length} neighboring route${relaxations.length === 1 ? "" : "s"}.`
-        : `Locked ${nodes[node].label} at ${distances[node]}. No shorter neighboring routes found.`;
-    setMessage(update);
-    setLogs((current) => [...relaxations.reverse(), update, ...current].slice(0, 5));
+    if (!atGate) {
+      setFeedback(
+        "Reach the scanner gate first. Move right and jump over the bug block.",
+      );
+      return;
+    }
+
+    setSelectedIndex(index);
+    setHintOpen(false);
+
+    if (index !== midpoint) {
+      const nextHearts = battle.hearts - 1;
+      setWrongIndex(index);
+      setBossAttacking(true);
+      setPlayerHit(true);
+      playTone(soundOn, 110, 0.2);
+      setFeedback(
+        `Not quite. The active indexes are ${battle.low} to ${battle.high}, so mid = floor((${battle.low} + ${battle.high}) / 2) = ${midpoint}. Try the value at index ${midpoint}.`,
+      );
+
+      window.setTimeout(() => {
+        setWrongIndex(null);
+        setBossAttacking(false);
+        setPlayerHit(false);
+      }, 650);
+
+      setBattle((current) => ({
+        ...current,
+        hearts: nextHearts,
+        status: nextHearts === 0 ? "lost" : "playing",
+      }));
+      return;
+    }
+
+    setWrongIndex(null);
+    setIsShooting(true);
+    playTone(soundOn, 620, 0.14);
+
+    window.setTimeout(() => {
+      setBossHit(true);
+      playTone(soundOn, 180, 0.18);
+
+      const nextShots = battle.correctShots + 1;
+      if (midpointValue === TARGET) {
+        setBattle((current) => ({
+          ...current,
+          correctShots: nextShots,
+          status: "won",
+        }));
+        setFeedback(
+          "Target found. Binary search reached 42 after checking only three midpoints.",
+        );
+        setProgress((current) => ({
+          completedLevel: Math.max(current.completedLevel, 1),
+          xp: Math.max(current.xp, 100),
+        }));
+      } else if (midpointValue < TARGET) {
+        const nextLow = midpoint + 1;
+        setBattle((current) => ({
+          ...current,
+          low: nextLow,
+          correctShots: nextShots,
+        }));
+        setFeedback(
+          `${midpointValue} is smaller than ${TARGET}, so indexes ${battle.low}–${midpoint} are impossible. Gate opened. Keep running right.`,
+        );
+        setAtGate(false);
+      } else {
+        const nextHigh = midpoint - 1;
+        setBattle((current) => ({
+          ...current,
+          high: nextHigh,
+          correctShots: nextShots,
+        }));
+        setFeedback(
+          `${midpointValue} is larger than ${TARGET}, so indexes ${midpoint}–${battle.high} are impossible. Gate opened. Keep running right.`,
+        );
+        setAtGate(false);
+      }
+
+      setSelectedIndex(null);
+      setIsShooting(false);
+      window.setTimeout(() => setBossHit(false), 350);
+    }, 430);
   }
 
-  function useHint() {
-    if (!expectedNode || won) return;
-    setHintsUsed((current) => current + 1);
-    setMessage(
-      `Scanner hint: choose ${nodes[expectedNode].label}. Its tentative distance ${distances[expectedNode]} is the smallest on the frontier.`,
-    );
-  }
-
-  function resetBattle() {
-    setVisited([]);
-    setDistances(initialDistances);
-    setPredecessors({});
-    setFocus(100);
-    setMessage(
-      "Dijkstra begins at the source. Select START to lock its distance.",
-    );
-    setLogs(["Rift initialized. The source distance is 0."]);
-    setWrongNode(null);
-    setHintsUsed(0);
-    setWon(false);
-  }
-
-  function scrollToArena() {
-    arenaRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  function resetProgress() {
+    const freshProgress = { completedLevel: 0, xp: 0 };
+    setProgress(freshProgress);
+    window.localStorage.removeItem(STORAGE_KEY);
+    setShowResetConfirm(false);
+    setBattle(getInitialBattle());
+    setView("home");
   }
 
   return (
-    <main className="site-shell">
-      <header className="topbar">
-        <a className="brand" href="#top" aria-label="AlgoRift home">
-          <span className="brand-mark">
-            <span />
-            <span />
-          </span>
-          <span>ALGO<span>RIFT</span></span>
-        </a>
-
-        <nav className="desktop-nav" aria-label="Primary navigation">
-          <a href="#realms">World Map</a>
-          <a href="#arena">Boss Arena</a>
-          <a href="#codex">Codex</a>
-        </nav>
-
-        <div className="player-chip">
-          <span className="player-level">07</span>
-          <span>
-            <small>Pathfinder</small>
-            <strong>1,240 XP</strong>
-          </span>
-        </div>
-
+    <div className="game-app" ref={pageTop}>
+      <header className="game-header">
         <button
-          className="mobile-menu"
           type="button"
-          aria-label="Toggle navigation"
-          aria-expanded={mobileOpen}
-          onClick={() => setMobileOpen((open) => !open)}
+          className="brand-button"
+          onClick={() => changeView("home")}
+          aria-label="AlgoRift home"
         >
-          {mobileOpen ? <X size={21} /> : <Menu size={21} />}
+          <BrandMark />
+          <span className="brand-word">ALGO<span>RIFT</span></span>
         </button>
 
-        {mobileOpen && (
-          <nav className="mobile-nav" aria-label="Mobile navigation">
-            <a href="#realms" onClick={() => setMobileOpen(false)}>World Map</a>
-            <a href="#arena" onClick={() => setMobileOpen(false)}>Boss Arena</a>
-            <a href="#codex" onClick={() => setMobileOpen(false)}>Codex</a>
-          </nav>
-        )}
+        <nav className="main-nav" aria-label="Main navigation">
+          <button
+            className={view === "home" ? "active" : ""}
+            type="button"
+            onClick={() => changeView("home")}
+          >
+            <Home size={16} />
+            Home
+          </button>
+          <button
+            className={view === "world" ? "active" : ""}
+            type="button"
+            onClick={() => changeView("world")}
+          >
+            <Map size={16} />
+            World
+          </button>
+        </nav>
+
+        <div className="header-actions">
+          <button
+            type="button"
+            className="sound-button"
+            onClick={() => setSoundOn((current) => !current)}
+            aria-label={soundOn ? "Mute game sounds" : "Enable game sounds"}
+          >
+            {soundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
+          </button>
+          <div className="player-badge">
+            <span className="player-level">LV {displayLevel}</span>
+            <span className="player-xp">{progress.xp} XP</span>
+          </div>
+        </div>
       </header>
 
-      <section className="hero" id="top">
-        <div className="hero-grid" aria-hidden="true" />
-        <div className="hero-copy">
-          <div className="eyebrow">
-            <span className="live-dot" />
-            Season 01 · The Graph Awakens
-          </div>
-          <h1>
-            Learn the logic.
-            <span>Defeat the impossible.</span>
-          </h1>
-          <p>
-            A hands-on algorithm adventure where every concept is a world,
-            every bug is a clue, and the hardest problems fight back.
-          </p>
-          <div className="hero-actions">
-            <button className="primary-button" type="button" onClick={scrollToArena}>
-              <Play size={17} fill="currentColor" />
-              Enter the arena
-            </button>
-            <a className="text-link" href="#realms">
-              Explore the curriculum <ArrowRight size={16} />
-            </a>
-          </div>
-          <div className="hero-stats">
-            <div>
-              <strong>32</strong>
-              <span>algorithm missions</span>
+      {view === "home" && (
+        <main className="home-view">
+          <section className="home-hero">
+            <div className="hero-sky">
+              <div className="cloud cloud-one" />
+              <div className="cloud cloud-two" />
+              <div className="pixel-sun" />
+              <div className="far-hill hill-one" />
+              <div className="far-hill hill-two" />
             </div>
-            <div>
-              <strong>8</strong>
-              <span>learning realms</span>
-            </div>
-            <div>
-              <strong>100%</strong>
-              <span>playable concepts</span>
-            </div>
-          </div>
-        </div>
 
-        <div className="hero-stage">
-          <div className="stage-orbit orbit-one" />
-          <div className="stage-orbit orbit-two" />
-          <div className="boss-sigil">
-            <div className="boss-eye">
-              <span />
-            </div>
-            <div className="sigil-shard shard-one" />
-            <div className="sigil-shard shard-two" />
-            <div className="sigil-shard shard-three" />
-          </div>
-          <div className="mission-card">
-            <span className="mission-kicker">LIVE ENCOUNTER</span>
-            <strong>The Shortest Path</strong>
-            <small>Dijkstra · Threat level 05</small>
-            <div className="mission-progress">
-              <span style={{ width: hasPriorWin ? "100%" : "40%" }} />
-            </div>
-            <button type="button" onClick={scrollToArena}>
-              {hasPriorWin ? "Replay encounter" : "Continue mission"}
-              <ChevronRight size={15} />
-            </button>
-          </div>
-          <div className="floating-tag tag-complexity">
-            <Clock3 size={14} />
-            O((V + E) log V)
-          </div>
-          <div className="floating-tag tag-xp">
-            <Sparkles size={14} />
-            +450 XP
-          </div>
-        </div>
-      </section>
+            <div className="hero-content">
+              <span className="quest-label">
+                <Sparkles size={15} />
+                Your first quest begins here
+              </span>
+              <h1>
+                Learn algorithms.
+                <span>Play the decisions.</span>
+              </h1>
+              <p>
+                A beginner-friendly side-scrolling adventure where every level
+                teaches one idea, lets you use it, and turns it into a boss battle.
+              </p>
 
-      <section className="section realms-section" id="realms">
-        <div className="section-heading">
-          <div>
-            <span className="section-kicker"><Map size={14} /> Your campaign</span>
-            <h2>Eight realms. One complete toolkit.</h2>
-          </div>
-          <p>
-            The path follows a real data structures and algorithms curriculum,
-            but every lesson earns its place through interaction.
-          </p>
-        </div>
+              <div className="hero-buttons">
+                <button className="game-primary" type="button" onClick={startLesson}>
+                  <Play size={18} fill="currentColor" />
+                  {progress.completedLevel > 0 ? "Replay Level 1" : "Start Level 1"}
+                </button>
+                <button
+                  className="game-secondary"
+                  type="button"
+                  onClick={() => changeView("world")}
+                >
+                  View world map
+                  <ArrowRight size={17} />
+                </button>
+              </div>
 
-        <div className="realm-path">
-          {realms.map((realm, index) => {
-            const Icon = realm.icon;
-            return (
-              <article
-                className={`realm-card ${realm.status} realm-${realm.color}`}
-                key={realm.title}
-              >
-                <div className="realm-number">{String(index + 1).padStart(2, "0")}</div>
-                <div className="realm-icon">
-                  <Icon size={22} />
+              <div className="first-mission">
+                <span className="mission-number">1-1</span>
+                <div>
+                  <small>NEXT MISSION</small>
+                  <strong>Binary Blaster</strong>
+                  <span>Learn binary search · defeat the Glitch King</span>
                 </div>
-                <span className="realm-eyebrow">{realm.eyebrow}</span>
-                <h3>{realm.title}</h3>
-                <strong>{realm.topic}</strong>
-                <p>{realm.copy}</p>
-                <div className="realm-footer">
-                  {realm.status === "cleared" && (
-                    <span className="status-cleared"><Check size={13} /> Cleared</span>
-                  )}
-                  {realm.status === "current" && (
-                    <span className="status-current"><Flame size={13} /> In progress</span>
-                  )}
-                  {realm.status === "locked" && (
-                    <span className="status-locked"><LockKeyhole size={13} /> Locked</span>
-                  )}
-                  <span>{realm.progress}</span>
+                <span className="mission-reward">+100 XP</span>
+              </div>
+            </div>
+
+            <div className="hero-scene" aria-label="Preview of the Binary Blaster boss">
+              <div className="speech-bubble">
+                <strong>GLITCH KING</strong>
+                <span>You will never find 42!</span>
+              </div>
+              <div className="hero-player"><PlayerSprite /></div>
+              <div className="hero-boss">
+                <BossSprite health={100} hit={false} attacking={false} />
+              </div>
+              <div className="floating-coin coin-one">O(log n)</div>
+              <div className="floating-coin coin-two">MID</div>
+              <div className="ground-platform">
+                <span />
+                <span />
+                <span />
+                <span />
+                <span />
+              </div>
+            </div>
+          </section>
+
+          <section className="how-it-works">
+            <div className="simple-heading">
+              <span>HOW EACH LEVEL WORKS</span>
+              <h2>Three steps. No guessing what to do next.</h2>
+            </div>
+            <div className="steps-row">
+              <article>
+                <span className="step-icon"><BookOpen size={22} /></span>
+                <div>
+                  <small>STEP 1</small>
+                  <h3>Learn</h3>
+                  <p>See one rule at a time with a visual example.</p>
                 </div>
               </article>
-            );
-          })}
-        </div>
-      </section>
+              <ChevronRight className="step-arrow" />
+              <article>
+                <span className="step-icon"><Target size={22} /></span>
+                <div>
+                  <small>STEP 2</small>
+                  <h3>Decide</h3>
+                    <p>Run, jump, and choose the next move. The answer is never highlighted.</p>
+                </div>
+              </article>
+              <ChevronRight className="step-arrow" />
+              <article>
+                <span className="step-icon"><Zap size={22} /></span>
+                <div>
+                  <small>STEP 3</small>
+                  <h3>Battle</h3>
+                  <p>Correct reasoning powers your attack. Mistakes teach, not punish.</p>
+                </div>
+              </article>
+            </div>
+          </section>
 
-      <section className="arena-section" id="arena" ref={arenaRef}>
-        <div className="arena-intro">
-          <div>
-            <span className="section-kicker"><Swords size={14} /> Boss encounter</span>
-            <h2>The Weighted Warden</h2>
-          </div>
-          <p>
-            Objective: reach the Core with the lowest total cost. You are the
-            priority queue. Choose the unvisited node with the smallest known distance.
-          </p>
-        </div>
-
-        <div className="battle-hud">
-          <div className="combatant player">
-            <div className="combatant-avatar"><Shield size={20} /></div>
+          <section className="home-progress">
             <div>
-              <span>PATHFINDER</span>
-              <strong>Your focus</strong>
+              <span className="section-label"><Compass size={15} /> Campaign progress</span>
+              <h2>{progress.completedLevel === 0 ? "Your journey starts at Level 1." : "Level 1 cleared. Nice work."}</h2>
+              <p>
+                Progress is earned by completing playable lessons. Nothing is
+                pre-completed, and your save stays on this device.
+              </p>
             </div>
-            <div className="health-wrap">
-              <span>{focus} / 100</span>
-              <div className="health-track player-health">
-                <i style={{ width: `${focus}%` }} />
+            <div className="progress-card">
+              <div className="progress-card-top">
+                <span>WORLD 1</span>
+                <strong>{progress.completedLevel > 0 ? "1 / 7 levels" : "0 / 7 levels"}</strong>
               </div>
+              <div className="campaign-track">
+                <span style={{ width: `${(progress.completedLevel / 7) * 100}%` }} />
+              </div>
+              <button type="button" onClick={() => changeView("world")}>
+                Open world map <ArrowRight size={16} />
+              </button>
+            </div>
+          </section>
+        </main>
+      )}
+
+      {view === "lesson" && (
+        <main className="lesson-view">
+          <div className="view-toolbar">
+            <button type="button" onClick={() => changeView("home")}>
+              <ArrowLeft size={17} /> Exit lesson
+            </button>
+            <span>LEVEL 1 · BINARY BLASTER</span>
+            <div className="lesson-dots" aria-label={`Lesson step ${lessonStep + 1} of 3`}>
+              {lessonSlides.map((slide, index) => (
+                <span key={slide.number} className={index <= lessonStep ? "filled" : ""} />
+              ))}
             </div>
           </div>
 
-          <div className="versus">VS</div>
-
-          <div className="combatant boss">
-            <div className="health-wrap">
-              <span>{bossHealth} / 100</span>
-              <div className="health-track boss-health">
-                <i style={{ width: `${bossHealth}%` }} />
+          <section className="lesson-stage">
+            <div className="teacher-panel">
+              <div className="guide-avatar">
+                <PlayerSprite />
               </div>
-            </div>
-            <div>
-              <span>GRAPH TYRANT</span>
-              <strong>Weighted Warden</strong>
-            </div>
-            <div className="combatant-avatar"><Crown size={20} /></div>
-          </div>
-        </div>
-
-        <div className="arena-grid">
-          <div className="graph-panel">
-            <div className="panel-topline">
-              <div>
-                <span>LIVE GRAPH</span>
-                <strong>Select the next node</strong>
-              </div>
-              <div className="legend">
-                <span><i className="legend-known" /> frontier</span>
-                <span><i className="legend-locked" /> visited</span>
+              <div className="guide-copy">
+                <span className="quest-label">GUIDE BOT · LESSON {currentSlide.number}</span>
+                <small>{currentSlide.eyebrow}</small>
+                <h1>{currentSlide.title}</h1>
+                <p>{currentSlide.copy}</p>
+                <div className="lesson-note">
+                  <Lightbulb size={18} />
+                  <span>{currentSlide.note}</span>
+                </div>
               </div>
             </div>
 
-            <div className={`graph-stage ${won ? "victory" : ""}`}>
-              <svg
-                viewBox="0 0 740 440"
-                role="img"
-                aria-label="Interactive weighted graph for the Dijkstra boss battle"
-              >
-                <defs>
-                  <filter id="nodeGlow" x="-100%" y="-100%" width="300%" height="300%">
-                    <feGaussianBlur stdDeviation="7" result="blur" />
-                    <feMerge>
-                      <feMergeNode in="blur" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                  </filter>
-                </defs>
-
-                {edges.map((edge) => {
-                  const from = nodes[edge.from];
-                  const to = nodes[edge.to];
-                  const x = (from.x + to.x) / 2;
-                  const y = (from.y + to.y) / 2;
-                  const isPath = pathEdges.has(edgeId(edge.from, edge.to));
-                  return (
-                    <g key={`${edge.from}-${edge.to}`}>
-                      <line
-                        className={`graph-edge ${isPath ? "path-edge" : ""}`}
-                        x1={from.x}
-                        y1={from.y}
-                        x2={to.x}
-                        y2={to.y}
-                      />
-                      <circle className="weight-back" cx={x} cy={y} r="12" />
-                      <text className="edge-weight" x={x} y={y + 4}>
-                        {edge.weight}
-                      </text>
-                    </g>
-                  );
-                })}
-
-                {(Object.keys(nodes) as NodeId[]).map((node) => {
-                  const position = nodes[node];
-                  const isVisited = visited.includes(node);
-                  const isExpected = node === expectedNode && !won;
-                  const isKnown = Number.isFinite(distances[node]);
-                  const isWrong = wrongNode === node;
-                  const isPath = shortestPath.includes(node);
-                  return (
-                    <g
-                      className={[
-                        "graph-node",
-                        isVisited ? "node-visited" : "",
-                        isExpected ? "node-expected" : "",
-                        isKnown ? "node-known" : "",
-                        isWrong ? "node-wrong" : "",
-                        isPath ? "node-path" : "",
-                      ].join(" ")}
-                      key={node}
-                      role="button"
-                      tabIndex={0}
-                      aria-label={`${position.label}, distance ${formatDistance(distances[node])}`}
-                      onClick={() => handleNodeClick(node)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          handleNodeClick(node);
-                        }
-                      }}
-                    >
-                      <circle
-                        className="node-pulse"
-                        cx={position.x}
-                        cy={position.y}
-                        r="31"
-                      />
-                      <circle
-                        className="node-circle"
-                        cx={position.x}
-                        cy={position.y}
-                        r={node === "CORE" ? 29 : 25}
-                        filter={isExpected ? "url(#nodeGlow)" : undefined}
-                      />
-                      <text
-                        className="node-label"
-                        x={position.x}
-                        y={position.y + 4}
-                      >
-                        {node === "CORE" ? "◆" : position.label}
-                      </text>
-                      <g className="distance-badge">
-                        <rect
-                          x={position.x - 17}
-                          y={position.y + 31}
-                          width="34"
-                          height="19"
-                          rx="4"
-                        />
-                        <text x={position.x} y={position.y + 45}>
-                          {formatDistance(distances[node])}
-                        </text>
-                      </g>
-                    </g>
-                  );
-                })}
-              </svg>
-              <div className="graph-grid-overlay" />
-              {won && (
-                <div className="victory-banner">
-                  <Trophy size={23} />
-                  <div>
-                    <span>ENCOUNTER CLEARED</span>
-                    <strong>S → B → A → D → C → F → CORE = 11</strong>
+            <div className={`lesson-visual visual-${currentSlide.visual}`}>
+              <div className="visual-target">
+                <Crosshair size={18} />
+                TARGET: 42
+              </div>
+              <div className="teaching-array">
+                {VALUES.map((value, index) => (
+                  <div
+                    key={value}
+                    className={[
+                      currentSlide.visual === "midpoint" && index === 3
+                        ? "teaching-mid"
+                        : "",
+                      currentSlide.visual === "discard" && index <= 3
+                        ? "teaching-discarded"
+                        : "",
+                    ].join(" ")}
+                  >
+                    <span>{value}</span>
+                    <small>index {index}</small>
                   </div>
-                  <span className="xp-reward">+450 XP</span>
+                ))}
+              </div>
+              {currentSlide.visual === "midpoint" && (
+                <div className="midpoint-pointer">
+                  <span>mid = 3</span>
+                  <ArrowRight size={18} />
+                </div>
+              )}
+              {currentSlide.visual === "discard" && (
+                <div className="discard-message">
+                  <span>17 &lt; 42</span>
+                  <strong>Discard indexes 0–3</strong>
+                  <span>New search range: 4–6</span>
                 </div>
               )}
             </div>
+          </section>
 
-            <div className="battle-message">
-              <div className={won ? "message-icon won" : "message-icon"}>
-                {won ? <Trophy size={18} /> : <Zap size={18} />}
-              </div>
-              <p>{message}</p>
-              <button type="button" onClick={useHint} disabled={won}>
-                <Lightbulb size={15} />
-                Hint {hintsUsed > 0 && `(${hintsUsed})`}
-              </button>
-            </div>
-          </div>
-
-          <aside className="lesson-panel">
-            <div className="lesson-tabs">
-              <span className="active">Battle intel</span>
-              <span>Concept</span>
-            </div>
-
-            <div className="objective-card">
-              <span className="mini-label">CURRENT RULE</span>
-              <h3>Choose the cheapest frontier.</h3>
-              <p>
-                Once the smallest tentative distance is chosen, it becomes
-                final. Then test whether traveling through it improves each neighbor.
-              </p>
-              <div className="rule-formula">
-                <span>new distance</span>
-                <code>min(old, current + edge)</code>
-              </div>
-            </div>
-
-            <div className="distance-table">
-              <div className="table-head">
-                <span>NODE</span>
-                <span>DISTANCE</span>
-                <span>STATE</span>
-              </div>
-              {(Object.keys(nodes) as NodeId[]).map((node) => (
-                <div className="table-row" key={node}>
-                  <strong>{nodes[node].label}</strong>
-                  <code>{formatDistance(distances[node])}</code>
-                  <span
-                    className={
-                      visited.includes(node)
-                        ? "state-locked"
-                        : Number.isFinite(distances[node])
-                          ? "state-frontier"
-                          : "state-hidden"
-                    }
-                  >
-                    {visited.includes(node)
-                      ? "locked"
-                      : Number.isFinite(distances[node])
-                        ? "frontier"
-                        : "unknown"}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <div className="combat-log">
-              <span className="mini-label">COMBAT LOG</span>
-              {logs.map((log, index) => (
-                <p key={`${log}-${index}`}>
-                  <span>{String(index + 1).padStart(2, "0")}</span>
-                  {log}
-                </p>
-              ))}
-            </div>
-
-            <button className="reset-button" type="button" onClick={resetBattle}>
-              <RotateCcw size={15} />
-              Reset encounter
+          <div className="lesson-controls">
+            <button
+              className="game-secondary"
+              type="button"
+              disabled={lessonStep === 0}
+              onClick={() => setLessonStep((step) => Math.max(0, step - 1))}
+            >
+              <ArrowLeft size={17} /> Previous
             </button>
-          </aside>
-        </div>
-
-        <div className="debrief-grid">
-          <article>
-            <div className="debrief-icon"><Route size={19} /></div>
-            <span>WHY IT WORKS</span>
-            <h3>Greedy, but guaranteed</h3>
-            <p>
-              With non-negative edge weights, no later route can improve a node
-              after the cheapest frontier node has been locked.
-            </p>
-          </article>
-          <article>
-            <div className="debrief-icon"><Clock3 size={19} /></div>
-            <span>COMPLEXITY</span>
-            <h3>O((V + E) log V)</h3>
-            <p>
-              An adjacency list plus a min-heap keeps frontier selection and
-              distance updates efficient on sparse graphs.
-            </p>
-          </article>
-          <article>
-            <div className="debrief-icon"><CircleHelp size={19} /></div>
-            <span>WATCH OUT</span>
-            <h3>No negative edges</h3>
-            <p>
-              A negative edge can invalidate a distance already declared final.
-              Bellman-Ford is the safer spell for those graphs.
-            </p>
-          </article>
-        </div>
-      </section>
-
-      <section className="section codex-section" id="codex">
-        <div className="section-heading">
-          <div>
-            <span className="section-kicker"><BookOpen size={14} /> Algorithm codex</span>
-            <h2>Your field guide to the rift.</h2>
+            {lessonStep < lessonSlides.length - 1 ? (
+              <button
+                className="game-primary"
+                type="button"
+                onClick={() => setLessonStep((step) => step + 1)}
+              >
+                Next idea <ArrowRight size={17} />
+              </button>
+            ) : (
+              <button className="game-primary" type="button" onClick={startBattle}>
+                <Crosshair size={18} /> Start practice battle
+              </button>
+            )}
           </div>
-          <p>
-            Every entry connects an idea, its complexity, a memorable metaphor,
-            and eventually a playable challenge.
-          </p>
-        </div>
+        </main>
+      )}
 
-        <div className="codex-table">
-          <div className="codex-head">
-            <span>Algorithm</span>
-            <span>Class</span>
-            <span>Signature</span>
-            <span>Mission</span>
+      {view === "battle" && (
+        <main className="battle-view">
+          <div className="view-toolbar battle-toolbar">
+            <button type="button" onClick={() => changeView("home")}>
+              <ArrowLeft size={17} /> Leave battle
+            </button>
+            <span>LEVEL 1-1 · BINARY BLASTER</span>
+            <button type="button" onClick={startBattle}>
+              <RotateCcw size={16} /> Restart
+            </button>
           </div>
-          {codex.map(([name, complexity, category, mission], index) => (
-            <div className="codex-row" key={name}>
-              <span className="codex-index">{String(index + 1).padStart(2, "0")}</span>
-              <strong>{name}</strong>
-              <span className={`category category-${category.toLowerCase()}`}>
-                {category}
-              </span>
-              <code>{complexity}</code>
-              <span className="codex-mission">{mission}</span>
-              <button type="button" aria-label={`Open ${name} mission`}>
-                <ChevronRight size={16} />
+
+          <section className="battle-scene">
+            <div className="battle-sky">
+              <div className="cloud battle-cloud-one" />
+              <div className="cloud battle-cloud-two" />
+              <div className="city-silhouette" />
+            </div>
+
+            <div className="battle-hud">
+              <div className="hud-player">
+                <span>PATHFINDER</span>
+                <HeartMeter hearts={battle.hearts} />
+              </div>
+              <div className="mission-target">
+                <Crosshair size={17} />
+                FIND <strong>{TARGET}</strong>
+              </div>
+              <div className="hud-boss">
+                <span>GLITCH KING</span>
+                <div className="boss-health-track">
+                  <i style={{ width: `${bossHealth}%` }} />
+                </div>
+              </div>
+            </div>
+
+            <div className="platform-instructions">
+              <span><kbd>A</kbd><kbd>D</kbd> Move</span>
+              <span><kbd>SPACE</kbd> Jump</span>
+              <strong>{atGate ? "GATE REACHED · SOLVE BELOW" : "REACH THE NEXT SCANNER GATE"}</strong>
+            </div>
+
+            <div
+              className={[
+                "runner-player",
+                jumping ? "runner-jumping" : "",
+                obstacleBump ? "runner-bump" : "",
+              ].join(" ")}
+              style={{ left: `${runnerX}%` }}
+            >
+              <PlayerSprite hit={playerHit} />
+              <span className="character-name">YOU</span>
+            </div>
+
+            {OBSTACLE_POSITIONS.map((position, index) => (
+              <div
+                className={[
+                  "bug-obstacle",
+                  index < battle.correctShots ? "obstacle-cleared" : "",
+                ].join(" ")}
+                key={position}
+                style={{ left: `${position}%` }}
+                aria-hidden="true"
+              >
+                <span className="bug-eye" />
+                <span className="bug-eye" />
+                <small>BUG</small>
+              </div>
+            ))}
+
+            {battle.status === "playing" && (
+              <div
+                className={`scanner-gate ${atGate ? "gate-active" : ""}`}
+                style={{
+                  left: `${GATE_POSITIONS[Math.min(battle.correctShots, GATE_POSITIONS.length - 1)]}%`,
+                }}
+                aria-hidden="true"
+              >
+                <span />
+                <strong>{battle.correctShots + 1}</strong>
+              </div>
+            )}
+
+            <div className="side-scroll-shot-lane">
+              {isShooting && (
+                <span
+                  className="energy-shot"
+                  style={{ left: `${Math.min(runnerX + 5, 82)}%` }}
+                />
+              )}
+              {bossAttacking && <span className="enemy-shot" />}
+            </div>
+
+            <div className="battle-characters">
+              <div className="battle-boss-wrap">
+                <BossSprite
+                  health={bossHealth}
+                  hit={bossHit}
+                  attacking={bossAttacking}
+                />
+                <span className="character-name">BOSS</span>
+              </div>
+            </div>
+
+            <div className="battle-ground">
+              <span /><span /><span /><span /><span /><span /><span /><span />
+            </div>
+          </section>
+
+          <section className="decision-panel">
+            <div className="decision-header">
+              <div>
+                <span className="section-label">
+                  <Target size={14} /> {atGate ? "Scanner gate unlocked" : "Platform section"}
+                </span>
+                <h2>{atGate ? "Which value is at the midpoint?" : "Reach the gate to reveal the challenge."}</h2>
+                <p>
+                  {atGate ? (
+                    <>
+                      Active indexes: <strong>{battle.low}</strong> through{" "}
+                      <strong>{battle.high}</strong>. Calculate first, then choose.
+                    </>
+                  ) : (
+                    <>Move right and jump over the bug block. The next gate stops you automatically.</>
+                  )}
+                </p>
+              </div>
+              <button
+                className="hint-button"
+                type="button"
+                onClick={() => setHintOpen((open) => !open)}
+              >
+                <Lightbulb size={16} />
+                {hintOpen ? "Hide hint" : "Need a hint?"}
               </button>
             </div>
-          ))}
+
+            {hintOpen && (
+              <div className="hint-box">
+                <CircleHelp size={18} />
+                <span>
+                  Use <code>floor((low + high) / 2)</code>. Substitute the active
+                  index numbers, then choose the value stored at that index.
+                </span>
+              </div>
+            )}
+
+            <div className="battle-array" role="group" aria-label="Sorted array choices">
+              {VALUES.map((value, index) => (
+                <button
+                  type="button"
+                  key={value}
+                  disabled={
+                    eliminated[index] ||
+                    battle.status !== "playing" ||
+                    !atGate
+                  }
+                  className={[
+                    eliminated[index] ? "eliminated" : "",
+                    selectedIndex === index ? "selected" : "",
+                    wrongIndex === index ? "wrong-choice" : "",
+                  ].join(" ")}
+                  onClick={() => chooseValue(index)}
+                  aria-label={`Value ${value} at index ${index}${eliminated[index] ? ", eliminated" : ""}`}
+                >
+                  <span>{value}</span>
+                  <small>INDEX {index}</small>
+                </button>
+              ))}
+            </div>
+
+            <div className="mobile-controls" aria-label="Platform controls">
+              <button type="button" onClick={() => moveRunner(-1)} aria-label="Move left">
+                <ArrowLeft size={22} />
+              </button>
+              <button type="button" onClick={jumpRunner} aria-label="Jump">
+                <ArrowRight className="jump-arrow" size={22} />
+                <span>JUMP</span>
+              </button>
+              <button type="button" onClick={() => moveRunner(1)} aria-label="Move right">
+                <ArrowRight size={22} />
+              </button>
+            </div>
+
+            <div className="feedback-bar">
+              <span className={battle.status === "won" ? "feedback-icon won" : "feedback-icon"}>
+                {battle.status === "won" ? <Trophy size={19} /> : <BookOpen size={19} />}
+              </span>
+              <p>{feedback}</p>
+              <div className="complexity-chip">
+                <Code2 size={14} />
+                O(log n)
+              </div>
+            </div>
+          </section>
+
+          {battle.status === "won" && (
+            <div className="result-overlay" role="dialog" aria-modal="true" aria-label="Level complete">
+              <div className="result-card victory-card">
+                <div className="result-trophy"><Trophy size={34} /></div>
+                <span>LEVEL 1 COMPLETE</span>
+                <h2>Glitch King defeated!</h2>
+                <p>
+                  You found 42 by checking three midpoints instead of all seven
+                  values. That is binary search in action.
+                </p>
+                <div className="result-stats">
+                  <div><strong>+100</strong><span>XP earned</span></div>
+                  <div><strong>3</strong><span>midpoints</span></div>
+                  <div><strong>O(log n)</strong><span>time</span></div>
+                </div>
+                <div className="result-actions">
+                  <button className="game-secondary" type="button" onClick={startBattle}>
+                    <RotateCcw size={16} /> Play again
+                  </button>
+                  <button className="game-primary" type="button" onClick={() => changeView("world")}>
+                    View next level <ArrowRight size={17} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {battle.status === "lost" && (
+            <div className="result-overlay" role="dialog" aria-modal="true" aria-label="Try again">
+              <div className="result-card retry-card">
+                <div className="result-trophy"><Shield size={34} /></div>
+                <span>FOCUS DEPLETED</span>
+                <h2>Checkpoint reached.</h2>
+                <p>
+                  Mistakes are part of learning. Remember: calculate the middle
+                  index first, then choose its value.
+                </p>
+                <div className="result-actions">
+                  <button className="game-secondary" type="button" onClick={startLesson}>
+                    <BookOpen size={16} /> Review lesson
+                  </button>
+                  <button className="game-primary" type="button" onClick={startBattle}>
+                    <RotateCcw size={16} /> Try again
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </main>
+      )}
+
+      {view === "world" && (
+        <main className="world-view">
+          <div className="world-heading">
+            <div>
+              <span className="section-label"><Map size={15} /> World map</span>
+              <h1>Your algorithm adventure</h1>
+              <p>Play the first chapter and preview the campaign roadmap.</p>
+            </div>
+            <div className="world-summary">
+              <strong>{progress.completedLevel} / {worlds.length}</strong>
+              <span>levels cleared</span>
+            </div>
+          </div>
+
+          <section className="world-path">
+            <div className="path-line" />
+            {worlds.map((world) => {
+              const complete = progress.completedLevel >= world.level;
+              const available = world.level === 1;
+              return (
+                <article
+                  className={[
+                    "world-level",
+                    `world-${world.color}`,
+                    complete ? "complete" : "",
+                    available ? "available" : "locked",
+                  ].join(" ")}
+                  key={world.level}
+                >
+                  <div className="level-node">
+                    {complete ? <Check size={20} /> : available ? world.level : <LockKeyhole size={18} />}
+                  </div>
+                  <div className="level-card">
+                    <div className="level-card-top">
+                      <span>LEVEL {world.level}</span>
+                      <span>{complete ? "CLEARED" : available ? "AVAILABLE" : "COMING SOON"}</span>
+                    </div>
+                    <small>{world.realm}</small>
+                    <h2>{world.title}</h2>
+                    <strong>{world.topics}</strong>
+                    <p>{world.description}</p>
+                    {available ? (
+                      <button type="button" onClick={startLesson}>
+                        {complete ? "Replay level" : "Start level"}
+                        <ArrowRight size={16} />
+                      </button>
+                    ) : (
+                      <span className="unlock-note">
+                        <LockKeyhole size={14} />
+                        Planned chapter · playable level in development
+                      </span>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+          </section>
+
+          <div className="world-footer-actions">
+            <button className="game-secondary" type="button" onClick={() => changeView("home")}>
+              <ArrowLeft size={17} /> Back home
+            </button>
+            <button className="reset-progress" type="button" onClick={() => setShowResetConfirm(true)}>
+              Reset my progress
+            </button>
+          </div>
+
+          {showResetConfirm && (
+            <div className="result-overlay" role="dialog" aria-modal="true" aria-label="Reset progress">
+              <div className="result-card reset-card">
+                <span>RESET SAVE DATA?</span>
+                <h2>Return to Level 1</h2>
+                <p>This removes earned XP and completed levels from this device.</p>
+                <div className="result-actions">
+                  <button className="game-secondary" type="button" onClick={() => setShowResetConfirm(false)}>
+                    Cancel
+                  </button>
+                  <button className="danger-button" type="button" onClick={resetProgress}>
+                    Reset progress
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </main>
+      )}
+
+      <footer className="game-footer">
+        <div className="footer-brand">
+          <BrandMark />
+          <div>
+            <strong>AlgoRift</strong>
+            <span>Learn by playing the decisions.</span>
+          </div>
         </div>
-      </section>
-
-      <section className="final-cta">
-        <div className="cta-sigil"><Gamepad2 size={30} /></div>
-        <span className="section-kicker">Built for curious minds</span>
-        <h2>Stop memorizing. Start making decisions.</h2>
-        <p>
-          Algorithms become intuitive when you can see the state change, make
-          the next move, and understand the consequence.
+        <p className="creator-mark">
+          Designed and developed by <strong>Immanuel Gnanaseelan</strong>
         </p>
-        <button className="primary-button" type="button" onClick={scrollToArena}>
-          Challenge the Warden
-          <Swords size={17} />
-        </button>
-      </section>
-
-      <footer>
-        <a className="brand footer-brand" href="#top">
-          <span className="brand-mark"><span /><span /></span>
-          <span>ALGO<span>RIFT</span></span>
-        </a>
-        <p>Designed and engineered as an interactive computer science playground.</p>
-        <div>
-          <a href="#codex"><Code2 size={16} /> View codex</a>
-          <a
-            href="https://github.com/immanuelgn/AlgoRift"
-            target="_blank"
-            rel="noreferrer"
-          >
+        <div className="footer-links">
+          <a href="https://github.com/immanuelgn/AlgoRift" target="_blank" rel="noreferrer">
             <Github size={16} /> GitHub
+          </a>
+          <a href="https://algorift.vercel.app" target="_blank" rel="noreferrer">
+            Live project <ArrowRight size={15} />
           </a>
         </div>
       </footer>
-    </main>
+    </div>
   );
 }

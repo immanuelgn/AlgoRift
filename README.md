@@ -1,60 +1,59 @@
 # AlgoRift
 
-**Learn the logic. Defeat the impossible.**
+**Learn algorithms by playing the decisions.**
 
-[Play AlgoRift](https://algorift.vercel.app) ·
-[View the source](https://github.com/immanuelgn/AlgoRift)
+[Play AlgoRift](https://algorift.vercel.app) | [View the source](https://github.com/immanuelgn/AlgoRift)
 
-![AlgoRift interactive algorithm adventure](public/algorift-preview.png)
+![AlgoRift side-scrolling algorithm game](public/algorift-preview.png)
 
-AlgoRift is an interactive data structures and algorithms adventure. Instead
-of presenting algorithms as static diagrams, it turns each concept into a
-playable decision system with worlds, combat rules, progression, and immediate
-visual feedback.
+AlgoRift is an original 2D learning game that turns data structures and
+algorithms into platforming levels, interactive decisions, and boss battles.
+The goal is to make difficult concepts approachable without reducing them to
+answer-clicking exercises.
 
-## The first boss fight
+## Playable release
 
-**The Weighted Warden** turns Dijkstra's shortest-path algorithm into a battle
-where the player acts as the priority queue:
+Level 1, **Binary Blaster**, teaches binary search through a complete game loop:
 
-- Choose the cheapest unsettled node.
-- Watch edge relaxation update the live distance table.
-- Lose focus on invalid moves and learn why the choice was incorrect.
-- Track visited nodes, frontier nodes, distance updates, and boss health.
-- Reveal and verify the final shortest path after defeating the boss.
+- Learn the sorted-array requirement, midpoint formula, and search-space rule.
+- Move left and right, jump over obstacles, and reach scanner gates.
+- Calculate each midpoint without a highlighted answer.
+- Receive precise teaching feedback after an incorrect choice.
+- Turn correct decisions into attacks against the Glitch King.
+- Earn XP and save real progress locally after defeating the boss.
 
-The encounter uses a real weighted graph and resolves the optimal route:
+The level checks `17`, then `31`, then `42`, visibly eliminating the impossible
+half of the array after each comparison. Keyboard and touch controls are
+supported.
 
-```text
-START -> B -> A -> D -> C -> F -> CORE
-Total cost: 11
-```
+## Campaign roadmap
 
-## Campaign
+The world map previews seven algorithm chapters:
 
-The world map organizes a full algorithms curriculum into eight themed realms:
+1. Binary search
+2. Sorting algorithms
+3. Stacks, queues, and hash maps
+4. Trees and traversal
+5. Graph search and Dijkstra's algorithm
+6. Greedy algorithms and intervals
+7. Dynamic programming
 
-1. Memory Marsh: arrays, linked lists, and hash maps
-2. Order Outpost: stacks, queues, and heaps
-3. Sortworks: sorting and searching
-4. Recursion Ruins: recursion and backtracking
-5. Graph Citadel: BFS, DFS, and shortest paths
-6. Treewilds: trees, tries, and binary search trees
-7. Greedy Dunes: greedy algorithms and interval problems
-8. Dynamic Forge: dynamic programming
+Future chapters are clearly marked as coming soon rather than appearing
+pre-completed.
 
 ## Tech stack
 
 - Next.js 16 App Router
 - React 19 and TypeScript
-- Tailwind CSS 4 foundation with a custom responsive design system
-- SVG graph rendering and keyboard-accessible interactions
+- Custom responsive CSS artwork and animation
+- Web Audio API sound effects
+- Keyboard and touch controls
+- Local storage progress persistence
 - Lucide icons
-- Local storage for zero-setup progress persistence
-- Vercel for production hosting
+- Vercel hosting
 
-No database is required for the current release. This keeps the experience
-fast, free to run, and deployable without environment variables.
+The current release is fully client-side and does not require a database,
+account, or environment variables.
 
 ## Run locally
 
@@ -69,18 +68,23 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ```bash
 npm run lint
+npx tsc --noEmit
 npm run build
 npm audit
 ```
 
-## Product roadmap
+## Planned additions
 
-- Playable sorting races and heap-defense missions
-- BFS/DFS fog-of-war exploration
-- Dynamic programming crafting system
-- In-browser code challenge mode
-- Supabase authentication, cloud saves, and seasonal leaderboards
-- Shareable completion cards for LinkedIn
+- Sorting race level
+- Stack and queue tower-defense level
+- Tree traversal climbing level
+- Dijkstra shortest-path boss fight
+- Dynamic programming crafting level
+- Optional Supabase accounts and cloud saves
+- Shareable completion cards
+
+Designed and developed by
+[Immanuel Gnanaseelan](https://github.com/immanuelgn).
 
 ## License
 
