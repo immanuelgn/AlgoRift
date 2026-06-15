@@ -71,6 +71,7 @@ const VALUES = [3, 8, 12, 17, 23, 31, 42];
 const TARGET = 42;
 const GATE_POSITIONS = [29, 54, 79];
 const OBSTACLE_POSITIONS = [17, 42, 67];
+const DATA_COIN_POSITIONS = [10.5, 35.5, 59.5];
 const POWER_UP_POSITION = 61.5;
 const DEFAULT_PROGRESS: PlayerProgress = {
   completedLevel: 0,
@@ -100,30 +101,33 @@ function getFriendlyAuthError(error: unknown) {
 const lessonSlides = [
   {
     number: "01",
-    eyebrow: "Meet the data",
-    title: "Binary search needs order.",
+    eyebrow: "Rule 1: sort first",
+    title: "Put values in order.",
     copy:
-      "A sorted array lets us rule out half the remaining values after every comparison. That is the source of its speed.",
+      "Binary search works only when values go from smallest to largest. Order tells us which direction to search next.",
     visual: "sorted",
-    note: "Input requirement: values must already be sorted.",
+    note: "Simple idea: sorted values give us a useful left and right.",
+    plain: "Array = a list of values. Position = where a value sits in that list.",
   },
   {
     number: "02",
-    eyebrow: "Choose the middle",
-    title: "Probe the midpoint.",
+    eyebrow: "Rule 2: check the middle",
+    title: "Start in the center.",
     copy:
-      "Use floor((low + high) / 2) to choose an index. Compare that value with the target instead of checking every item.",
+      "Look at the middle position first. This single check tells us which half can still contain the target.",
     visual: "midpoint",
-    note: "mid = floor((0 + 6) / 2) = 3",
+    note: "Middle position = floor((first position + last position) / 2).",
+    plain: "floor means round down. For positions 0 to 6, the middle is position 3.",
   },
   {
     number: "03",
-    eyebrow: "Cut the search space",
-    title: "Discard the impossible half.",
+    eyebrow: "Rule 3: choose a side",
+    title: "Keep only the possible half.",
     copy:
-      "If the midpoint is too small, move low to mid + 1. If it is too large, move high to mid - 1. Repeat until found.",
+      "Middle value too small? Search right. Too large? Search left. Repeat with the smaller group.",
     visual: "discard",
-    note: "Each decision removes roughly half the remaining work.",
+    note: "Every correct choice removes about half of the remaining values.",
+    plain: "Discard means ignore values that can no longer be the answer.",
   },
 ];
 
@@ -355,18 +359,32 @@ function PlayerSprite({
       ].join(" ")}
       aria-hidden="true"
     >
-      <div className="player-antenna" />
-      <div className="player-head">
-        <span className="player-eye eye-left" />
-        <span className="player-eye eye-right" />
+      <div className="runner-scarf">
+        <span />
       </div>
-      <div className="player-body">
-        <span className="player-core" />
+      <div className="runner-hair" />
+      <div className="runner-head">
+        <span className="runner-ear" />
+        <span className="runner-eye runner-eye-left" />
+        <span className="runner-eye runner-eye-right" />
+        <span className="runner-nose" />
+        <span className="runner-smile" />
       </div>
-      <div className="player-arm player-arm-left" />
-      <div className="player-cannon" />
-      <div className="player-leg player-leg-left" />
-      <div className="player-leg player-leg-right" />
+      <div className="runner-torso">
+        <span className="runner-emblem">A</span>
+      </div>
+      <div className="runner-arm runner-arm-left">
+        <span className="runner-hand" />
+      </div>
+      <div className="runner-arm runner-arm-right">
+        <span className="runner-hand" />
+      </div>
+      <div className="runner-leg runner-leg-left">
+        <span className="runner-boot" />
+      </div>
+      <div className="runner-leg runner-leg-right">
+        <span className="runner-boot" />
+      </div>
     </div>
   );
 }
@@ -445,6 +463,8 @@ export function AlgoRift() {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [runnerX, setRunnerX] = useState(5);
   const [jumping, setJumping] = useState(false);
+  const [runnerMoving, setRunnerMoving] = useState(false);
+  const [collectedCoins, setCollectedCoins] = useState<number[]>([]);
   const [obstacleBump, setObstacleBump] = useState(false);
   const [atGate, setAtGate] = useState(false);
   const [powerUpCollected, setPowerUpCollected] = useState(false);
@@ -471,6 +491,8 @@ export function AlgoRift() {
   >(isSupabaseConfigured ? "loading" : "local");
   const pageTop = useRef<HTMLDivElement>(null);
   const progressRef = useRef(progress);
+  const jumpingRef = useRef(false);
+  const movementTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -668,6 +690,18 @@ export function AlgoRift() {
   const bossHealth = Math.max(0, 100 - battle.correctShots * 34);
   const displayLevel = Math.max(1, progress.completedLevel + 1);
   const currentSlide = lessonSlides[lessonStep];
+  const currentRound = Math.min(battle.correctShots + 1, 3);
+  const midpointEquation = `floor((${battle.low} + ${battle.high}) / 2)`;
+  const cameraOffset = Math.max(0, Math.min(25, (runnerX - 20) * 0.44));
+  const coachTitle = !atGate
+    ? currentRound === 1
+      ? "Run right. Jump through the bug."
+      : `Checkpoint ${currentRound} is ahead.`
+    : currentRound === 1
+      ? "Let us solve the first one together."
+      : currentRound === 2
+        ? "Your turn: find the new middle."
+        : "Only one possible value remains.";
 
   const eliminated = useMemo(
     () =>
@@ -691,19 +725,60 @@ export function AlgoRift() {
   function startBattle() {
     setBattle(getInitialBattle());
     setFeedback(
-      "Your mission: find 42. Calculate the midpoint, then choose that value.",
+      "Goal: find 42. Run to each checkpoint, check the middle position, and choose its value.",
     );
     setSelectedIndex(null);
     setWrongIndex(null);
     setHintOpen(false);
     setRunnerX(5);
+    jumpingRef.current = false;
     setJumping(false);
+    setRunnerMoving(false);
+    setCollectedCoins([]);
     setObstacleBump(false);
     setAtGate(false);
     setPowerUpCollected(false);
     setPowerUpBurst(false);
     setIsHeatVisionFiring(false);
     changeView("battle");
+  }
+
+  function markRunnerMoving() {
+    setRunnerMoving(true);
+    if (movementTimerRef.current) {
+      window.clearTimeout(movementTimerRef.current);
+    }
+    movementTimerRef.current = window.setTimeout(() => {
+      setRunnerMoving(false);
+    }, 180);
+  }
+
+  function collectCoinsBetween(current: number, next: number) {
+    DATA_COIN_POSITIONS.forEach((position, index) => {
+      if (current < position && next >= position - 1) {
+        setCollectedCoins((coins) =>
+          coins.includes(index) ? coins : [...coins, index],
+        );
+      }
+    });
+  }
+
+  function collectPowerUpBetween(current: number, next: number) {
+    if (
+      battle.correctShots === 2 &&
+      !powerUpCollected &&
+      current < POWER_UP_POSITION &&
+      next >= POWER_UP_POSITION - 1.5
+    ) {
+      setPowerUpCollected(true);
+      setPowerUpBurst(true);
+      setFeedback(
+        "Redline Vision collected. Your first two correct middle choices charged it. Solve the last checkpoint to fire it.",
+      );
+      playTone(soundOn, 420, 0.08);
+      window.setTimeout(() => playTone(soundOn, 680, 0.12), 90);
+      window.setTimeout(() => setPowerUpBurst(false), 700);
+    }
   }
 
   function moveRunner(direction: -1 | 1) {
@@ -717,6 +792,7 @@ export function AlgoRift() {
       return;
     }
 
+    markRunnerMoving();
     setRunnerX((current) => {
       if (direction === -1) {
         return Math.max(3, current - 3.5);
@@ -727,37 +803,25 @@ export function AlgoRift() {
       const obstacle = OBSTACLE_POSITIONS[stage];
       const next = Math.min(gate, current + 3.5);
       const crossingObstacle = current < obstacle && next >= obstacle - 1.5;
-      const crossingPowerUp =
-        battle.correctShots === 2 &&
-        !powerUpCollected &&
-        current < POWER_UP_POSITION &&
-        next >= POWER_UP_POSITION - 1.5;
 
-      if (crossingPowerUp) {
-        setPowerUpCollected(true);
-        setPowerUpBurst(true);
-        setFeedback(
-          "Redline Vision collected. Your first two correct midpoint decisions charged it. Solve the final active range to release the beam.",
-        );
-        playTone(soundOn, 420, 0.08);
-        window.setTimeout(() => playTone(soundOn, 680, 0.12), 90);
-        window.setTimeout(() => setPowerUpBurst(false), 700);
-      }
-
-      if (crossingObstacle && !jumping) {
+      if (crossingObstacle && !jumpingRef.current) {
         setObstacleBump(true);
         setFeedback(
-          "A bug block is in the way. Jump, then keep moving right to reach the algorithm gate.",
+          "The bug blocks the path. Press Space or the Jump Forward button, then keep moving right.",
         );
         playTone(soundOn, 135, 0.12);
         window.setTimeout(() => setObstacleBump(false), 320);
         return current;
       }
 
+      collectCoinsBetween(current, next);
+      collectPowerUpBetween(current, next);
       if (next >= gate - 0.5) {
         setAtGate(true);
         setFeedback(
-          "Scanner gate reached. Calculate the midpoint below to unlock the path and charge your blaster.",
+          currentRound === 1
+            ? `Checkpoint reached. The active positions are ${battle.low} to ${battle.high}. Their middle is position ${midpoint}.`
+            : `Checkpoint reached. Find the middle position between ${battle.low} and ${battle.high}.`,
         );
       }
       return next;
@@ -765,10 +829,39 @@ export function AlgoRift() {
   }
 
   function jumpRunner() {
-    if (jumping || battle.status !== "playing" || atGate) return;
+    if (jumpingRef.current || battle.status !== "playing" || atGate) return;
+    jumpingRef.current = true;
     setJumping(true);
+    markRunnerMoving();
     playTone(soundOn, 350, 0.1);
-    window.setTimeout(() => setJumping(false), 620);
+
+    setRunnerX((current) => {
+      const stage = Math.min(battle.correctShots, GATE_POSITIONS.length - 1);
+      const gate = GATE_POSITIONS[stage];
+      const obstacle = OBSTACLE_POSITIONS[stage];
+      const distanceToObstacle = obstacle - current;
+      const next =
+        distanceToObstacle >= -2 && distanceToObstacle <= 14
+          ? Math.min(gate, obstacle + 4.5)
+          : Math.min(gate, current + 3.5);
+
+      collectCoinsBetween(current, next);
+      collectPowerUpBetween(current, next);
+      if (next >= gate - 0.5) {
+        setAtGate(true);
+        setFeedback(
+          currentRound === 1
+            ? `Checkpoint reached. Positions ${battle.low} to ${battle.high} have middle position ${midpoint}.`
+            : `Checkpoint reached. Find the middle position between ${battle.low} and ${battle.high}.`,
+        );
+      }
+      return next;
+    });
+
+    window.setTimeout(() => {
+      jumpingRef.current = false;
+      setJumping(false);
+    }, 720);
   }
 
   function chooseValue(index: number) {
@@ -799,7 +892,7 @@ export function AlgoRift() {
       setPlayerHit(true);
       playTone(soundOn, 110, 0.2);
       setFeedback(
-        `Not quite. The active indexes are ${battle.low} to ${battle.high}, so mid = floor((${battle.low} + ${battle.high}) / 2) = ${midpoint}. Try the value at index ${midpoint}.`,
+        `Try again: the current positions are ${battle.low} to ${battle.high}. The middle position is ${midpoint}, so choose the value sitting above position ${midpoint}.`,
       );
 
       window.setTimeout(() => {
@@ -840,7 +933,7 @@ export function AlgoRift() {
           status: "won",
         }));
         setFeedback(
-          "Target found. Binary search reached 42 after checking only three midpoints.",
+          "Found it. Binary search reached 42 after only three middle checks.",
         );
         setProgress((current) => ({
           completedLevel: Math.max(current.completedLevel, 1),
@@ -857,8 +950,8 @@ export function AlgoRift() {
         }));
         setFeedback(
           nextShots === 2
-            ? `${midpointValue} is smaller than ${TARGET}, so indexes ${battle.low}–${midpoint} are impossible. Two correct midpoint decisions charged a Redline Core ahead.`
-            : `${midpointValue} is smaller than ${TARGET}, so indexes ${battle.low}–${midpoint} are impossible. Gate opened. Keep running right.`,
+            ? `${midpointValue} is too small, so 42 must be to the right. The left side disappears, and your Redline Core is ready ahead.`
+            : `${midpointValue} is too small, so 42 must be to the right. The left side disappears. Keep running.`,
         );
         setAtGate(false);
       } else {
@@ -869,7 +962,7 @@ export function AlgoRift() {
           correctShots: nextShots,
         }));
         setFeedback(
-          `${midpointValue} is larger than ${TARGET}, so indexes ${midpoint}–${battle.high} are impossible. Gate opened. Keep running right.`,
+          `${midpointValue} is too large, so the target must be to the left. The right side disappears. Keep running.`,
         );
         setAtGate(false);
       }
@@ -1501,13 +1594,17 @@ export function AlgoRift() {
                 <PlayerSprite />
               </div>
               <div className="guide-copy">
-                <span className="quest-label">GUIDE BOT · LESSON {currentSlide.number}</span>
+                <span className="quest-label">NOVA&apos;S FIELD GUIDE · LESSON {currentSlide.number}</span>
                 <small>{currentSlide.eyebrow}</small>
                 <h1>{currentSlide.title}</h1>
                 <p>{currentSlide.copy}</p>
                 <div className="lesson-note">
                   <Lightbulb size={18} />
                   <span>{currentSlide.note}</span>
+                </div>
+                <div className="lesson-plain">
+                  <strong>Plain English</strong>
+                  <span>{currentSlide.plain}</span>
                 </div>
               </div>
             </div>
@@ -1531,7 +1628,7 @@ export function AlgoRift() {
                     ].join(" ")}
                   >
                     <span>{value}</span>
-                    <small>index {index}</small>
+                    <small>position {index}</small>
                   </div>
                 ))}
               </div>
@@ -1544,8 +1641,8 @@ export function AlgoRift() {
               {currentSlide.visual === "discard" && (
                 <div className="discard-message">
                   <span>17 &lt; 42</span>
-                  <strong>Discard indexes 0–3</strong>
-                  <span>New search range: 4–6</span>
+                  <strong>Remove positions 0–3</strong>
+                  <span>Keep positions 4–6</span>
                 </div>
               )}
             </div>
@@ -1593,7 +1690,6 @@ export function AlgoRift() {
             <div className="battle-sky">
               <div className="cloud battle-cloud-one" />
               <div className="cloud battle-cloud-two" />
-              <div className="city-silhouette" />
             </div>
 
             <div className="battle-hud">
@@ -1633,16 +1729,58 @@ export function AlgoRift() {
               </strong>
             </div>
 
-            <div className="platform-instructions">
-              <span><kbd>A</kbd><kbd>D</kbd> Move</span>
-              <span><kbd>SPACE</kbd> Jump</span>
-              <strong>{atGate ? "GATE REACHED · SOLVE BELOW" : "REACH THE NEXT SCANNER GATE"}</strong>
+            <div className="stage-coach" aria-live="polite">
+              <span>CHECKPOINT {currentRound} OF 3</span>
+              <strong>{coachTitle}</strong>
+              <small>
+                {atGate
+                  ? "Choose from the learning panel directly below."
+                  : "Use D or Right Arrow to run. Space jumps forward."}
+              </small>
             </div>
+
+            <div className="stage-controls" aria-label="Platform controls">
+              <button type="button" onClick={() => moveRunner(-1)} aria-label="Move left">
+                <ArrowLeft size={19} />
+                <span>LEFT</span>
+              </button>
+              <button
+                type="button"
+                className="jump-control"
+                onClick={jumpRunner}
+                aria-label="Jump forward"
+              >
+                <span className="jump-control-arrow">↑</span>
+                <span>JUMP FORWARD</span>
+              </button>
+              <button type="button" onClick={() => moveRunner(1)} aria-label="Run right">
+                <ArrowRight size={19} />
+                <span>RUN</span>
+              </button>
+            </div>
+
+            <div
+              className="scrolling-track"
+              style={{ transform: `translateX(-${cameraOffset}%)` }}
+            >
+              <div className="city-silhouette" />
+
+              {DATA_COIN_POSITIONS.map((position, index) => (
+                <div
+                  className={`data-coin ${collectedCoins.includes(index) ? "coin-collected" : ""}`}
+                  key={position}
+                  style={{ left: `${position}%` }}
+                  aria-hidden="true"
+                >
+                  <span>{index % 2}</span>
+                </div>
+              ))}
 
             <div
               className={[
                 "runner-player",
                 jumping ? "runner-jumping" : "",
+                runnerMoving ? "runner-moving" : "",
                 obstacleBump ? "runner-bump" : "",
                 powerUpBurst ? "runner-power-burst" : "",
               ].join(" ")}
@@ -1653,7 +1791,7 @@ export function AlgoRift() {
                 powered={powerUpCollected}
                 firing={isHeatVisionFiring}
               />
-              <span className="character-name">YOU</span>
+              <span className="character-name">{username || "NOVA"}</span>
             </div>
 
             {battle.correctShots === 2 && !powerUpCollected && (
@@ -1736,91 +1874,122 @@ export function AlgoRift() {
             <div className="battle-ground">
               <span /><span /><span /><span /><span /><span /><span /><span />
             </div>
+            </div>
           </section>
 
           <section className="decision-panel">
             <div className="decision-header">
               <div>
                 <span className="section-label">
-                  <Target size={14} /> {atGate ? "Scanner gate unlocked" : "Platform section"}
+                  <Target size={14} />{" "}
+                  {atGate ? `Learning checkpoint ${currentRound}` : "Keep moving"}
                 </span>
-                <h2>{atGate ? "Which value is at the midpoint?" : "Reach the gate to reveal the challenge."}</h2>
+                <h2>{atGate ? coachTitle : "Run to the next checkpoint."}</h2>
                 <p>
                   {atGate ? (
                     <>
-                      Active indexes: <strong>{battle.low}</strong> through{" "}
-                      <strong>{battle.high}</strong>. Calculate first, then choose.
+                      We only need positions <strong>{battle.low}</strong> through{" "}
+                      <strong>{battle.high}</strong>. Crossed-out values cannot
+                      contain 42.
                     </>
                   ) : (
-                    <>Move right and jump over the bug block. The next gate stops you automatically.</>
+                    <>Jumping moves Nova forward too, so the bug cannot trap you.</>
                   )}
                 </p>
               </div>
-              <button
-                className="hint-button"
-                type="button"
-                onClick={() => setHintOpen((open) => !open)}
-              >
-                <Lightbulb size={16} />
-                {hintOpen ? "Hide hint" : "Need a hint?"}
-              </button>
+              {atGate && (
+                <button
+                  className="hint-button"
+                  type="button"
+                  onClick={() => setHintOpen((open) => !open)}
+                >
+                  <Lightbulb size={16} />
+                  {hintOpen ? "Hide hint" : "Show me the calculation"}
+                </button>
+              )}
             </div>
 
             {hintOpen && (
               <div className="hint-box">
                 <CircleHelp size={18} />
                 <span>
-                  Use <code>floor((low + high) / 2)</code>. Substitute the active
-                  index numbers, then choose the value stored at that index.
+                  {currentRound === 1
+                    ? `The middle position is ${midpoint}. The value at that position is ${midpointValue}.`
+                    : `Work it out: ${midpointEquation} = ${midpoint}. Choose the value at position ${midpoint}.`}
                 </span>
               </div>
             )}
 
-            <div className="battle-array" role="group" aria-label="Sorted array choices">
-              {VALUES.map((value, index) => (
-                <button
-                  type="button"
-                  key={value}
-                  disabled={
-                    eliminated[index] ||
-                    battle.status !== "playing" ||
-                    !atGate
-                  }
-                  className={[
-                    eliminated[index] ? "eliminated" : "",
-                    selectedIndex === index ? "selected" : "",
-                    wrongIndex === index ? "wrong-choice" : "",
-                  ].join(" ")}
-                  onClick={() => chooseValue(index)}
-                  aria-label={`Value ${value} at index ${index}${eliminated[index] ? ", eliminated" : ""}`}
-                >
-                  <span>{value}</span>
-                  <small>INDEX {index}</small>
-                </button>
-              ))}
-            </div>
+            {atGate && (
+              <div className="learning-path">
+                <div>
+                  <span>1</span>
+                  <p>
+                    <strong>Keep the possible range</strong>
+                    Positions {battle.low} to {battle.high}
+                  </p>
+                </div>
+                <div className="learning-path-active">
+                  <span>2</span>
+                  <p>
+                    <strong>Find its middle position</strong>
+                    {currentRound === 1
+                      ? `${midpointEquation} = ${midpoint}`
+                      : midpointEquation}
+                  </p>
+                </div>
+                <div>
+                  <span>3</span>
+                  <p>
+                    <strong>Choose the value there</strong>
+                    Then decide left, right, or found
+                  </p>
+                </div>
+              </div>
+            )}
 
-            <div className="mobile-controls" aria-label="Platform controls">
-              <button type="button" onClick={() => moveRunner(-1)} aria-label="Move left">
-                <ArrowLeft size={22} />
-              </button>
-              <button type="button" onClick={jumpRunner} aria-label="Jump">
-                <ArrowRight className="jump-arrow" size={22} />
-                <span>JUMP</span>
-              </button>
-              <button type="button" onClick={() => moveRunner(1)} aria-label="Move right">
-                <ArrowRight size={22} />
-              </button>
-            </div>
+            {atGate ? (
+              <div className="battle-array" role="group" aria-label="Sorted array choices">
+                {VALUES.map((value, index) => (
+                  <button
+                    type="button"
+                    key={value}
+                    disabled={eliminated[index] || battle.status !== "playing"}
+                    className={[
+                      eliminated[index] ? "eliminated" : "",
+                      selectedIndex === index ? "selected" : "",
+                      wrongIndex === index ? "wrong-choice" : "",
+                    ].join(" ")}
+                    onClick={() => chooseValue(index)}
+                    aria-label={`Value ${value} at position ${index}${eliminated[index] ? ", eliminated" : ""}`}
+                  >
+                    <span>{value}</span>
+                    <small>POSITION {index}</small>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="run-mission">
+                <Play size={20} />
+                <div>
+                  <strong>Movement goal</strong>
+                  <span>
+                    Run right, then use Jump Forward when a red bug blocks Nova.
+                  </span>
+                </div>
+                <kbd>D / →</kbd>
+                <kbd>SPACE</kbd>
+              </div>
+            )}
 
             <div className="feedback-bar">
               <span className={battle.status === "won" ? "feedback-icon won" : "feedback-icon"}>
                 {battle.status === "won" ? <Trophy size={19} /> : <BookOpen size={19} />}
               </span>
-              <p>{feedback}</p>
+              <p aria-live="polite">{feedback}</p>
               <div className="complexity-chip">
                 <Code2 size={14} />
-                O(log n)
+                FAST · O(log n)
               </div>
             </div>
           </section>
@@ -1832,13 +2001,13 @@ export function AlgoRift() {
                 <span>LEVEL 1 COMPLETE</span>
                 <h2>Glitch King defeated!</h2>
                 <p>
-                  You found 42 by checking three midpoints instead of all seven
-                  values. Redline Vision activated only after every required
-                  binary-search decision was correct.
+                  You found 42 with three middle checks instead of testing every
+                  value. That is binary search: check the middle, choose a side,
+                  and repeat.
                 </p>
                 <div className="result-stats">
                   <div><strong>+100</strong><span>XP earned</span></div>
-                  <div><strong>3</strong><span>midpoints</span></div>
+                  <div><strong>3</strong><span>middle checks</span></div>
                   <div><strong>REDLINE</strong><span>power found</span></div>
                 </div>
                 <div className="result-actions">

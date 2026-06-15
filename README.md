@@ -16,7 +16,8 @@ answer-clicking exercises.
 Level 1, **Binary Blaster**, teaches binary search through a complete game loop:
 
 - Learn the sorted-array requirement, midpoint formula, and search-space rule.
-- Move left and right, jump over obstacles, and reach scanner gates.
+- Guide Nova through a camera-following side-scrolling course.
+- Run, use forgiving forward jumps, collect data coins, and reach checkpoints.
 - Calculate each midpoint without a highlighted answer.
 - Receive precise teaching feedback after an incorrect choice.
 - Charge Redline Vision by making two correct midpoint decisions.
@@ -28,6 +29,10 @@ half of the array after each comparison. Keyboard and touch controls are
 supported. Redline Vision is an original audiovisual effect built with CSS and
 the Web Audio API. It never highlights an answer, removes a learning step, or
 replaces the player's calculation.
+
+The lesson introduces plain-language terms first, demonstrates the first middle
+calculation, asks the player to solve the second, and reinforces the final
+decision during the boss encounter.
 
 ## Accounts and progress
 
