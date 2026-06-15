@@ -1603,7 +1603,7 @@ a:focus-visible {
 .stage-controls {
   display: grid;
   gap: 8px;
-  grid-template-columns: 72px 126px 72px;
+  grid-template-columns: 66px 82px 66px 82px;
   position: absolute;
   right: 24px;
   top: 105px;
@@ -1640,6 +1640,19 @@ a:focus-visible {
 
 .stage-controls .jump-control {
   background: var(--sun);
+}
+
+.stage-controls .fire-control {
+  background: #ff655d;
+  color: var(--ink);
+}
+
+.stage-controls button:disabled {
+  box-shadow: none;
+  cursor: not-allowed;
+  filter: grayscale(0.8);
+  opacity: 0.48;
+  transform: none;
 }
 
 .jump-control-arrow {
@@ -1939,6 +1952,95 @@ a:focus-visible {
   transform-origin: bottom center;
 }
 
+.pipe-obstacle.obstacle-passed {
+  filter: none;
+  opacity: 1;
+}
+
+.course-sign {
+  align-items: center;
+  background: var(--white);
+  border: 3px solid var(--ink);
+  border-radius: 8px;
+  bottom: 82px;
+  display: flex;
+  flex-direction: column;
+  font-family: Consolas, monospace;
+  padding: 7px 10px;
+  position: absolute;
+  z-index: 3;
+}
+
+.course-sign::after {
+  background: var(--ink);
+  content: "";
+  height: 34px;
+  position: absolute;
+  top: 100%;
+  width: 4px;
+}
+
+.course-sign strong {
+  font-size: 10px;
+}
+
+.course-sign span {
+  color: var(--violet);
+  font-size: 7px;
+  font-weight: 900;
+  margin-top: 2px;
+}
+
+.start-sign {
+  left: 3%;
+}
+
+.power-lane-sign {
+  left: 57%;
+}
+
+.finish-flag {
+  bottom: 64px;
+  height: 120px;
+  left: 85.5%;
+  position: absolute;
+  width: 68px;
+  z-index: 3;
+}
+
+.finish-flag::before {
+  background: var(--ink);
+  content: "";
+  height: 118px;
+  left: 8px;
+  position: absolute;
+  top: 0;
+  width: 5px;
+}
+
+.finish-flag span {
+  background: var(--violet);
+  border: 3px solid var(--ink);
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+  height: 43px;
+  left: 13px;
+  position: absolute;
+  top: 4px;
+  width: 48px;
+}
+
+.finish-flag strong {
+  background: var(--white);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  bottom: -4px;
+  font-family: Consolas, monospace;
+  font-size: 7px;
+  left: -3px;
+  padding: 4px 7px;
+  position: absolute;
+}
+
 .scanner-gate {
   border: 5px solid var(--violet);
   border-bottom: 0;
@@ -2022,7 +2124,6 @@ a:focus-visible {
   padding: 5px 9px;
 }
 
-.energy-shot,
 .enemy-shot {
   border: 3px solid var(--ink);
   border-radius: 50%;
@@ -2030,12 +2131,6 @@ a:focus-visible {
   position: absolute;
   top: 20px;
   width: 28px;
-}
-
-.energy-shot {
-  animation: sideShootRight 0.55s linear forwards;
-  background: var(--sun);
-  box-shadow: 0 0 0 7px rgba(255,216,77,0.3);
 }
 
 .enemy-shot {
@@ -2079,6 +2174,172 @@ a:focus-visible {
   margin: 0 auto;
   max-width: 1180px;
   padding: 30px 25px 70px;
+}
+
+.logic-choice-card {
+  background: rgba(255,255,255,0.98);
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  bottom: 82px;
+  box-shadow: 0 9px 0 rgba(16,21,43,0.2);
+  left: 50%;
+  max-width: 560px;
+  padding: 16px;
+  position: absolute;
+  transform: translateX(-50%);
+  width: calc(100% - 40px);
+  z-index: 30;
+}
+
+.logic-choice-heading {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.logic-choice-heading > span {
+  color: var(--violet);
+  font-family: Consolas, monospace;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+
+.logic-choice-heading strong {
+  font-size: 14px;
+}
+
+.logic-choice-heading b {
+  color: var(--violet);
+  font-size: 18px;
+}
+
+.logic-range {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin: 13px 0 8px;
+}
+
+.logic-range span {
+  align-items: center;
+  background: #e8e9ee;
+  border: 2px solid var(--ink);
+  border-radius: 7px;
+  display: flex;
+  font-family: Consolas, monospace;
+  font-size: 11px;
+  font-weight: 900;
+  height: 35px;
+  justify-content: center;
+  width: 42px;
+}
+
+.logic-range .range-midpoint {
+  background: var(--sun);
+  transform: translateY(-4px);
+}
+
+.logic-choice-card > p {
+  color: #5b6278;
+  font-size: 12px;
+  font-weight: 800;
+  margin: 8px 0;
+  text-align: center;
+}
+
+.direction-choices {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.direction-choices button {
+  align-items: center;
+  background: var(--white);
+  border: 2px solid var(--ink);
+  border-radius: 9px;
+  cursor: pointer;
+  display: flex;
+  font-size: 10px;
+  font-weight: 950;
+  gap: 5px;
+  justify-content: center;
+  min-height: 43px;
+}
+
+.direction-choices button:last-child {
+  background: #dff3ff;
+}
+
+.direction-choices button:hover {
+  transform: translateY(-2px);
+}
+
+.direction-choices .wrong-direction {
+  animation: wrongShake 0.32s ease;
+  background: #ffd4d1;
+}
+
+.micro-hint {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: #5f6580;
+  cursor: pointer;
+  display: flex;
+  font-size: 9px;
+  font-weight: 800;
+  gap: 5px;
+  justify-content: center;
+  margin: 9px auto 0;
+}
+
+.compact-game-panel {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.9fr);
+}
+
+.gameplay-summary h2 {
+  font-size: clamp(27px, 3vw, 40px);
+  letter-spacing: -0.045em;
+  margin: 8px 0;
+}
+
+.gameplay-summary > p {
+  color: #646b82;
+  font-size: 12px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.control-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.control-legend span {
+  align-items: center;
+  display: flex;
+  font-size: 10px;
+  gap: 5px;
+}
+
+.control-legend kbd {
+  background: var(--ink);
+  border-radius: 6px;
+  color: var(--white);
+  font-family: Consolas, monospace;
+  font-size: 8px;
+  padding: 5px 7px;
+}
+
+.compact-game-panel .feedback-bar {
+  align-self: center;
+  margin-top: 0;
 }
 
 .decision-header {
@@ -2194,47 +2455,6 @@ a:focus-visible {
 
 .battle-array {
   margin-top: 22px;
-}
-
-.run-mission {
-  align-items: center;
-  background: #e8f8ff;
-  border: 2px solid var(--ink);
-  border-radius: 14px;
-  display: grid;
-  gap: 12px;
-  grid-template-columns: auto 1fr auto auto;
-  margin-top: 22px;
-  padding: 14px 16px;
-}
-
-.run-mission > svg {
-  color: var(--violet);
-}
-
-.run-mission > div {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.run-mission strong {
-  font-size: 13px;
-}
-
-.run-mission span {
-  color: #646b82;
-  font-size: 11px;
-}
-
-.run-mission kbd {
-  background: var(--ink);
-  border-radius: 7px;
-  color: var(--white);
-  font-family: Consolas, monospace;
-  font-size: 9px;
-  font-weight: 900;
-  padding: 8px 10px;
 }
 
 .battle-array button {
@@ -3746,7 +3966,7 @@ a:focus-visible {
 
   .stage-controls {
     bottom: 8px;
-    grid-template-columns: 58px 112px 58px;
+    grid-template-columns: 54px 70px 54px 70px;
     left: auto;
     right: 10px;
     top: auto;
@@ -3757,16 +3977,38 @@ a:focus-visible {
     min-height: 46px;
   }
 
-  .learning-path {
+  .logic-choice-card {
+    bottom: 78px;
+    padding: 12px;
+    width: calc(100% - 20px);
+  }
+
+  .logic-choice-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .logic-choice-heading strong {
+    font-size: 12px;
+  }
+
+  .logic-range span {
+    height: 31px;
+    width: 34px;
+  }
+
+  .direction-choices button {
+    font-size: 8px;
+    min-height: 39px;
+  }
+
+  .compact-game-panel {
     grid-template-columns: 1fr;
   }
 
-  .run-mission {
-    grid-template-columns: auto 1fr;
-  }
-
-  .run-mission kbd {
-    display: none;
+  .learning-path {
+    grid-template-columns: 1fr;
   }
 
   .decision-panel {
