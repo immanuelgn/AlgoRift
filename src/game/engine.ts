@@ -57,7 +57,8 @@ const TRACE_TARGET = 42;
 const BINARY_SEARCH_BRIEF: AlgorithmBrief = {
   title: "Binary Search",
   rule: "Compare the middle value, then keep only the half where the target can still exist.",
-  detail: "Target 42 lives in a sorted signal. Every terminal asks you to shrink the search window.",
+  detail:
+    "World 1 gates use a sorted number row. Press E, check MID, then choose the side that can still contain 42.",
 };
 
 export class PlatformGameEngine {
@@ -173,7 +174,7 @@ export class PlatformGameEngine {
         ...this.tracePrompt,
         rejected: direction,
       };
-      this.statusLine = "TRACE REJECTED // SIGNAL OUTSIDE WINDOW";
+      this.statusLine = "WRONG HALF // CHECK MID AGAIN";
       this.sound.hit();
       this.emitUiState(true);
       return;
@@ -191,8 +192,8 @@ export class PlatformGameEngine {
     this.levelManager.clearFirewalls();
     this.statusLine =
       direction === "lock"
-        ? "ROOT SIGNATURE LOCKED"
-        : `WINDOW PATCHED // ${direction.toUpperCase()} HALF`;
+        ? "TARGET FOUND // GATE OPEN"
+        : `SEARCH WINDOW CUT // ${direction.toUpperCase()} HALF`;
     this.traceSuccessTimer = 0.5;
     this.sound.terminal();
     this.emitBurst(
@@ -436,7 +437,7 @@ export class PlatformGameEngine {
 
     const terminal = this.getNearbyTerminal();
     if (terminal && !this.hackerMode) {
-      this.statusLine = "TERMINAL IN RANGE // E TO OVERRIDE";
+      this.statusLine = "BINARY SEARCH GATE // PRESS E";
     }
   }
 
@@ -602,7 +603,7 @@ export class PlatformGameEngine {
               : "lock",
         rejected: null,
       };
-      this.statusLine = "BINARY TRACE ATTACHED";
+      this.statusLine = "BINARY SEARCH GATE // CHOOSE THE HALF";
       this.sound.terminal();
     } else {
       this.tracePrompt = null;
@@ -1136,8 +1137,9 @@ export class PlatformGameEngine {
     if (!this.tracePrompt) return BINARY_SEARCH_BRIEF;
     return {
       title: "Binary Search Terminal",
-      rule: "Read the pivot. If the target is larger, keep the higher half. If it is smaller, keep the lower half.",
-      detail: `Active window: [${this.tracePrompt.values.join(", ")}]. Pivot ${this.tracePrompt.pivot}, target ${this.tracePrompt.target}.`,
+      rule:
+        "Read MID. If the target is larger, search right. If it is smaller, search left.",
+      detail: `Active window: [${this.tracePrompt.values.join(", ")}]. MID ${this.tracePrompt.pivot}, target ${this.tracePrompt.target}.`,
     };
   }
 }

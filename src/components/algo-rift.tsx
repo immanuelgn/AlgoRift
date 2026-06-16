@@ -46,7 +46,7 @@ import {
   supabaseConfigurationError,
 } from "@/lib/supabase";
 
-type View = "home" | "battle" | "sort" | "prototype" | "world";
+type View = "home" | "battle" | "sort" | "runner" | "world";
 
 type PlayerProgress = {
   completedLevel: number;
@@ -124,6 +124,99 @@ const worlds = [
 ];
 
 type WorldDefinition = (typeof worlds)[number];
+
+type WorldMechanic = {
+  concept: string;
+  stageGoal: string;
+  terminalTitle: string;
+  terminalRule: string;
+  prompt: string;
+  choices: [string, string, string];
+  correctChoice: number;
+  wrongHint: string;
+  success: string;
+  gateLabel: string;
+  pickupLabel: string;
+  enemyLabel: string;
+};
+
+const worldMechanics: Record<number, WorldMechanic> = {
+  3: {
+    concept: "Stack",
+    stageGoal: "Climb the memory tower and open the elevator gate.",
+    terminalTitle: "Stack Console",
+    terminalRule:
+      "A stack is last-in, first-out. The newest block must leave first.",
+    prompt: "Blocks entered as A, B, C. Which block pops first?",
+    choices: ["A, the oldest block", "B, the middle block", "C, the newest block"],
+    correctChoice: 2,
+    wrongHint: "Stack gates pop from the top. Choose the most recent block.",
+    success: "Correct. C leaves first, so the elevator stack unlocks.",
+    gateLabel: "LIFO",
+    pickupLabel: "PUSH",
+    enemyLabel: "LEAK",
+  },
+  4: {
+    concept: "Binary Search Tree",
+    stageGoal: "Follow the branch bridges without losing the active route.",
+    terminalTitle: "Branch Router",
+    terminalRule:
+      "In a BST, smaller values go left and larger values go right.",
+    prompt: "You stand on node 50. Target 72 is incoming. Which bridge opens?",
+    choices: ["Left branch", "Right branch", "Restart at root"],
+    correctChoice: 1,
+    wrongHint: "72 is larger than 50, so the route moves to the right branch.",
+    success: "Right branch locked. The tree bridge grows forward.",
+    gateLabel: "BST",
+    pickupLabel: "NODE",
+    enemyLabel: "NULL",
+  },
+  5: {
+    concept: "Dijkstra",
+    stageGoal: "Cross the weighted citadel by choosing the lowest total cost.",
+    terminalTitle: "Path Cost Gate",
+    terminalRule:
+      "Dijkstra expands the currently cheapest known path first.",
+    prompt: "Routes to the gate cost 9, 4, and 7. Which path gets explored next?",
+    choices: ["Cost 9", "Cost 4", "Cost 7"],
+    correctChoice: 1,
+    wrongHint: "Dijkstra is greedy about total distance: pick the smallest cost.",
+    success: "Shortest route confirmed. The heavy gate drops.",
+    gateLabel: "MIN",
+    pickupLabel: "DIST",
+    enemyLabel: "WEIGHT",
+  },
+  6: {
+    concept: "Greedy Choice",
+    stageGoal: "Sprint through collapsing platforms by choosing the best local move.",
+    terminalTitle: "Interval Switch",
+    terminalRule:
+      "A greedy interval strategy often keeps the option that finishes earliest.",
+    prompt: "Three safe platforms end at 12, 8, and 15. Which keeps the route open?",
+    choices: ["End at 12", "End at 8", "End at 15"],
+    correctChoice: 1,
+    wrongHint: "Choose the earliest finish so the most future platforms remain possible.",
+    success: "Earliest finish selected. The next bridge appears.",
+    gateLabel: "FAST",
+    pickupLabel: "LOCAL",
+    enemyLabel: "DELAY",
+  },
+  7: {
+    concept: "Dynamic Programming",
+    stageGoal: "Power the final gate by reusing cached subproblems.",
+    terminalTitle: "Memo Core",
+    terminalRule:
+      "Dynamic programming stores answers so repeated subproblems are not solved again.",
+    prompt: "fib(6) needs fib(5) and fib(4). fib(4) is already cached. What should you do?",
+    choices: ["Recompute fib(4)", "Use the cached fib(4)", "Delete the cache"],
+    correctChoice: 1,
+    wrongHint: "DP saves time by reusing the cache when a subproblem repeats.",
+    success: "Cache reused. The final kernel gate opens.",
+    gateLabel: "MEMO",
+    pickupLabel: "CACHE",
+    enemyLabel: "REPEAT",
+  },
+};
 
 function normalizeProgress(value: Partial<PlayerProgress> | null | undefined) {
   return {
@@ -464,7 +557,7 @@ export function AlgoRift() {
       return;
     }
     setSelectedWorldLevel(level);
-    changeView("prototype");
+    changeView("runner");
   }
 
   const handleGameComplete = useCallback(
@@ -792,8 +885,8 @@ export function AlgoRift() {
                 <span className="step-icon"><Target size={22} /></span>
                 <div>
                   <small>BREACH</small>
-                  <h3>Resolve the trace</h3>
-                  <p>Narrow the signal window and unlock the route forward.</p>
+                  <h3>Open algorithm gates</h3>
+                  <p>Use the rule built into the obstacle, then keep running.</p>
                 </div>
               </article>
             </div>
@@ -804,9 +897,8 @@ export function AlgoRift() {
               <span>WHAT YOU LEARN</span>
               <h2>Algorithms are the powers, locks, and circuits.</h2>
               <p>
-                Each playable world has a short algorithm coach plus a hands-on
-                mechanic. Start with Binary Search in World 1, then clear Bubble
-                Sort in World 2.
+                Each world turns a data-structure or algorithm rule into a
+                gate, bridge, route, or power-up inside a side-scrolling stage.
               </p>
             </div>
             <div className="learning-cards">
@@ -827,11 +919,11 @@ export function AlgoRift() {
                 </p>
               </article>
               <article>
-                <small>COMING NEXT</small>
-                <h3>Stacks, Graphs, DP</h3>
+                <small>WORLDS 3-7</small>
+                <h3>Stacks, Trees, Graphs, Greedy, DP</h3>
                 <p>
-                  Future worlds turn memory rules, shortest paths, and cached
-                  states into mechanics.
+                  Later stages use LIFO memory, branch choices, shortest paths,
+                  local decisions, and memoized states to open the route.
                 </p>
               </article>
             </div>
@@ -911,8 +1003,8 @@ export function AlgoRift() {
         />
       )}
 
-      {view === "prototype" && (
-        <PrototypeWorld
+      {view === "runner" && (
+        <AlgorithmRunnerWorld
           world={selectedWorld}
           onComplete={handleGameComplete}
           onExit={() => changeView("world")}
@@ -925,7 +1017,10 @@ export function AlgoRift() {
             <div>
               <span className="section-label"><Map size={15} /> World map</span>
               <h1>AlgoRift campaign</h1>
-              <p>Each world turns one algorithm family into a different game system.</p>
+              <p>
+                Run left to right, dodge hazards, and use algorithm terminals
+                to open gates inside each stage.
+              </p>
             </div>
             <div className="world-summary">
               <strong>{progress.completedLevel} / {worlds.length}</strong>
@@ -1221,28 +1316,36 @@ function SortCircuit({ onExit, onComplete }: SortCircuitProps) {
   );
 }
 
-type PrototypeWorldProps = {
+type AlgorithmRunnerWorldProps = {
   world: WorldDefinition;
   onExit: () => void;
   onComplete: (payload: PlayerProgress) => void;
 };
 
-function PrototypeWorld({ world, onExit, onComplete }: PrototypeWorldProps) {
-  const [step, setStep] = useState(0);
+function AlgorithmRunnerWorld({
+  world,
+  onExit,
+  onComplete,
+}: AlgorithmRunnerWorldProps) {
+  const mechanic = worldMechanics[world.level];
+  const [phase, setPhase] = useState<"run" | "hack" | "clear">("run");
+  const [feedback, setFeedback] = useState(
+    "Run to the terminal. It controls the next gate in the stage.",
+  );
+  const [mistakes, setMistakes] = useState(0);
   const [complete, setComplete] = useState(false);
-  const lessonSteps = [
-    `Read the world rule: ${world.topics}.`,
-    "Find the terminal, solve the intended mechanic, then watch the route change.",
-    "Clear the end gate to unlock the next world.",
-  ];
+  const runnerProgress = phase === "run" ? 12 : phase === "hack" ? 43 : 74;
 
-  function advance() {
-    const finalStep = step >= lessonSteps.length - 1;
-    if (!finalStep) {
-      setStep((current) => current + 1);
+  function choose(index: number) {
+    if (complete) return;
+    if (index !== mechanic.correctChoice) {
+      setMistakes((current) => current + 1);
+      setFeedback(mechanic.wrongHint);
       return;
     }
 
+    setFeedback(mechanic.success);
+    setPhase("clear");
     setComplete(true);
     onComplete({
       completedLevel: world.level,
@@ -1251,13 +1354,15 @@ function PrototypeWorld({ world, onExit, onComplete }: PrototypeWorldProps) {
     });
   }
 
-  function resetPrototype() {
-    setStep(0);
+  function resetStage() {
+    setPhase("run");
+    setFeedback("Run to the terminal. It controls the next gate in the stage.");
+    setMistakes(0);
     setComplete(false);
   }
 
   return (
-    <main className="prototype-world-view">
+    <main className="algorithm-runner-view">
       <header className="canvas-game-toolbar">
         <button type="button" onClick={onExit}>
           <ArrowLeft size={17} /> Exit
@@ -1266,40 +1371,115 @@ function PrototypeWorld({ world, onExit, onComplete }: PrototypeWorldProps) {
           <span>WORLD {world.level}</span>
           <strong>{world.title}</strong>
         </div>
-        <button type="button" onClick={resetPrototype}>
+        <button type="button" onClick={resetStage}>
           <RotateCcw size={16} /> Restart
         </button>
       </header>
 
-      <section className={`prototype-world-shell world-${world.color}`}>
-        <div className="prototype-side-scroll" aria-hidden="true">
-          <div className="prototype-runner"><PlayerSprite powered /></div>
-          <div className="prototype-terminal">
+      <section className={`algorithm-runner-shell world-${world.color}`}>
+        <div className="runner-stage" aria-label={`${world.title} platform stage preview`}>
+          <div className="runner-cloud runner-cloud-one" />
+          <div className="runner-cloud runner-cloud-two" />
+          <div className="runner-hill runner-hill-one" />
+          <div className="runner-hill runner-hill-two" />
+          <div className="runner-ground" />
+          <div className="runner-track-line" />
+
+          {[14, 31, 58].map((left, index) => (
+            <div
+              className={`runner-platform platform-${index + 1}`}
+              key={left}
+              style={{ left: `${left}%` }}
+            />
+          ))}
+
+          {[22, 52, 68].map((left, index) => (
+            <div
+              className="runner-pickup"
+              key={left}
+              style={{ left: `${left}%` }}
+            >
+              <Sparkles size={13} />
+              <span>{index === 1 ? mechanic.pickupLabel : "+1"}</span>
+            </div>
+          ))}
+
+          {[27, 64].map((left) => (
+            <div className="runner-stage-enemy" key={left} style={{ left: `${left}%` }}>
+              <span>{mechanic.enemyLabel}</span>
+            </div>
+          ))}
+
+          <div
+            className="runner-stage-player"
+            style={{ left: `${runnerProgress}%` }}
+            aria-hidden="true"
+          >
+            <PlayerSprite powered={complete} />
+          </div>
+
+          <button
+            type="button"
+            className={`runner-stage-terminal ${phase !== "run" ? "active" : ""}`}
+            onClick={() => {
+              if (phase === "run") {
+                setPhase("hack");
+                setFeedback("Terminal connected. Pick the move that matches the rule.");
+              }
+            }}
+          >
             <Terminal size={24} />
-            <span>HACK</span>
-          </div>
-          <div className={complete ? "prototype-gate open" : "prototype-gate"}>
+            <span>{mechanic.concept}</span>
+            <small>PRESS</small>
+          </button>
+
+          <div className={complete ? "runner-stage-gate open" : "runner-stage-gate"}>
             <LockKeyhole size={28} />
+            <span>{mechanic.gateLabel}</span>
           </div>
-          <div className="prototype-flag">EXIT</div>
+          <div className="runner-stage-flag">FINISH</div>
+          <div className="runner-stage-sign">
+            <strong>{mechanic.concept}</strong>
+            <span>{mechanic.stageGoal}</span>
+          </div>
         </div>
 
-        <aside className="prototype-panel">
-          <span>GUEST CAMPAIGN ACCESS</span>
+        <aside className="runner-hack-panel">
+          <span>WORLD {world.level} PLATFORM SYSTEM</span>
           <h1>{world.title}</h1>
           <strong>{world.topics}</strong>
-          <p>{world.description}</p>
-          <div className="prototype-lesson">
-            <small>TERMINAL STEP {step + 1} / {lessonSteps.length}</small>
-            <p>{lessonSteps[step]}</p>
+          <p>{mechanic.stageGoal}</p>
+          <div className="runner-live-rule">
+            <small>{mechanic.terminalTitle}</small>
+            <p>{mechanic.terminalRule}</p>
           </div>
-          <button type="button" onClick={advance}>
-            {step >= lessonSteps.length - 1 ? "Clear world" : "Hack next step"}
-            <ArrowRight size={17} />
-          </button>
+          <div className="runner-terminal-card">
+            <small>GATE PUZZLE</small>
+            <p>{mechanic.prompt}</p>
+            <div className="runner-choice-grid">
+              {mechanic.choices.map((choice, index) => (
+                <button
+                  type="button"
+                  key={choice}
+                  disabled={phase === "run" || complete}
+                  onClick={() => choose(index)}
+                >
+                  {choice}
+                </button>
+              ))}
+            </div>
+          </div>
+          {phase === "run" && (
+            <button type="button" onClick={() => setPhase("hack")}>
+              Reach terminal <ArrowRight size={17} />
+            </button>
+          )}
+          <p className={mistakes > 0 ? "runner-feedback warn" : "runner-feedback"}>
+            {feedback}
+          </p>
           <small>
-            This is a playable progression bridge for the next platformer world.
-            Guest saves unlock the next card immediately.
+            The algorithm is the key. You still run, jump, and dodge like a
+            platformer, but gates only open when the system rule is used.
           </small>
         </aside>
 
@@ -1309,8 +1489,8 @@ function PrototypeWorld({ world, onExit, onComplete }: PrototypeWorldProps) {
               <span>WORLD {world.level} CLEAR</span>
               <h2>Next world unlocked.</h2>
               <p>
-                Guest progress was saved locally. Accounts sync the same unlock
-                path to Supabase.
+                You used {mechanic.concept} logic as the stage mechanic.
+                Guest progress unlocks the next world immediately.
               </p>
               <div className="canvas-complete-stats">
                 <strong>WORLD {world.level}</strong>

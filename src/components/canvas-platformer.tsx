@@ -44,7 +44,8 @@ const INITIAL_UI_STATE: GameUiState = {
   algorithmBrief: {
     title: "Binary Search",
     rule: "Compare the middle value, then keep only the half where the target can still exist.",
-    detail: "Target 42 lives in a sorted signal. Every terminal shrinks the search window.",
+    detail:
+      "World 1 gates use a sorted row of numbers. Press E, check MID, then keep the side that can still contain 42.",
   },
   status: "playing",
   statusLine: "REACH THE EXIT FLAG",
@@ -335,42 +336,55 @@ export function CanvasPlatformer({
                   {ui.tracePrompt ? (
                     <>
                       <div className="trace-heading">
-                        <span>BINARY TRACE</span>
+                        <span>BINARY SEARCH GATE</span>
                         <strong>TARGET {ui.tracePrompt.target}</strong>
                       </div>
+                      <p className="trace-goal">
+                        Goal: find {ui.tracePrompt.target} by cutting this
+                        sorted signal in half.
+                      </p>
                       <p className="trace-rule">
-                        Binary search checks the middle value first. Choose the
-                        half where the target can still exist.
+                        First check MID. If the target is bigger than MID,
+                        search right. If it is smaller, search left.
                       </p>
                       <div className="trace-values">
-                        {ui.tracePrompt.values.map((value) => (
-                          <span
-                            key={value}
-                            className={
-                              value === ui.tracePrompt?.pivot
-                                ? "trace-pivot"
-                                : ""
-                            }
-                          >
-                            {value}
-                          </span>
-                        ))}
+                        {ui.tracePrompt.values.map((value, index) => {
+                          const markers = [];
+                          if (index === 0) markers.push("LOW");
+                          if (value === ui.tracePrompt?.pivot) markers.push("MID");
+                          if (index === ui.tracePrompt!.values.length - 1) {
+                            markers.push("HIGH");
+                          }
+                          return (
+                            <span
+                              key={value}
+                              className={
+                                value === ui.tracePrompt?.pivot
+                                  ? "trace-pivot"
+                                  : ""
+                              }
+                            >
+                              <b>{markers.join("/")}</b>
+                              {value}
+                            </span>
+                          );
+                        })}
                       </div>
                       <div className="trace-readout">
-                        <span>PIVOT</span>
+                        <span>MID</span>
                         <strong>{ui.tracePrompt.pivot}</strong>
                         <span>VS {ui.tracePrompt.target}</span>
                       </div>
                       <p className="trace-hint">
-                        If target is bigger than pivot, choose HIGHER. If it is
-                        smaller, choose LOWER. If equal, LOCK.
+                        Since the row is sorted, every wrong half can be
+                        ignored. That is why Binary Search is O(log n).
                       </p>
                       <div className="trace-actions">
                         {(
                           [
-                            ["lower", "LOWER"],
-                            ["lock", "LOCK"],
-                            ["higher", "HIGHER"],
+                            ["lower", "Search left half"],
+                            ["lock", "Found target"],
+                            ["higher", "Search right half"],
                           ] as Array<[TraceDirection, string]>
                         ).map(([direction, label]) => (
                           <button
