@@ -33,9 +33,6 @@ provide cloud-synced progress with email/password authentication.
 - The frontend uses only the browser-safe Supabase URL and publishable key.
 - Signing out resets the device to a fresh guest campaign starting at Game 1.
 
-Run [supabase/algorift_setup.sql](supabase/algorift_setup.sql) in the Supabase
-SQL Editor to create the required tables, trigger, grants, and RLS policies.
-
 ## Tech Stack
 
 - Next.js 16 App Router

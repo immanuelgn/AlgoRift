@@ -19,11 +19,16 @@ create table if not exists public.game_progress (
   xp integer not null default 0,
   redline_vision_unlocked boolean not null default false,
   updated_at timestamptz not null default now(),
-  constraint game_progress_level_range
-    check (completed_level between 0 and 7),
   constraint game_progress_xp_range
     check (xp between 0 and 1000000)
 );
+
+alter table public.game_progress
+  drop constraint if exists game_progress_level_range;
+
+alter table public.game_progress
+  add constraint game_progress_level_range
+  check (completed_level between 0 and 8);
 
 alter table public.profiles enable row level security;
 alter table public.game_progress enable row level security;
@@ -79,7 +84,7 @@ language plpgsql
 set search_path = ''
 as $$
 begin
-  new.updated_at = now();
+  new.updated_at = pg_catalog.now();
   return new;
 end;
 $$;
@@ -114,7 +119,8 @@ begin
   values (new.id, requested_username);
 
   insert into public.game_progress (user_id)
-  values (new.id);
+  values (new.id)
+  on conflict (user_id) do nothing;
 
   return new;
 end;
@@ -127,6 +133,28 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+insert into public.profiles (id, username)
+select
+  users.id,
+  'player_' || substring(replace(users.id::text, '-', '') from 1 for 8)
+from auth.users as users
+where not exists (
+  select 1
+  from public.profiles as profiles
+  where profiles.id = users.id
+)
+on conflict do nothing;
+
+insert into public.game_progress (user_id)
+select users.id
+from auth.users as users
+where not exists (
+  select 1
+  from public.game_progress as progress
+  where progress.user_id = users.id
+)
+on conflict do nothing;
 
 -- Recommended dashboard settings after running this SQL:
 -- 1. Authentication > Providers > Email: keep email confirmation enabled.

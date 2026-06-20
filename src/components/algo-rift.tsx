@@ -673,6 +673,18 @@ export function AlgoRift() {
             {user ? <Cloud size={17} /> : <UserRound size={17} />}
             <span>{user ? username || "Account" : "Account"}</span>
           </button>
+          {user && (
+            <button
+              type="button"
+              className="header-signout"
+              onClick={() => void signOut()}
+              disabled={authBusy}
+              aria-label="Sign out and restart as a guest from Game 1"
+            >
+              <LogOut size={16} />
+              <span>Sign out</span>
+            </button>
+          )}
           <div
             className="header-progress"
             aria-label={`${progress.completedLevel} of ${worlds.length} games mastered`}
@@ -1175,11 +1187,11 @@ const DIJKSTRA_STEPS = [
   { frontier: ["D:7", "F:9"], correct: "D" },
 ] as const;
 const GREEDY_INTERVALS = [
-  { id: "B", label: "B 1-3", finish: 3 },
-  { id: "A", label: "A 0-5", finish: 5 },
-  { id: "D", label: "D 3-5", finish: 5 },
-  { id: "C", label: "C 4-7", finish: 7 },
-  { id: "E", label: "E 5-8", finish: 8 },
+  { id: "B", label: "B", start: 1, finish: 3 },
+  { id: "A", label: "A", start: 0, finish: 5 },
+  { id: "D", label: "D", start: 3, finish: 5 },
+  { id: "C", label: "C", start: 4, finish: 7 },
+  { id: "E", label: "E", start: 5, finish: 8 },
 ] as const;
 const GREEDY_ORDER = ["B", "D", "E"];
 const DP_VALUES = [0, 1, 1, 2, 3, 5];
@@ -1495,7 +1507,7 @@ function MiniGameWorld({
         </div>
       </header>
 
-      <section className={`mini-game-shell world-${world.color} ${showGuide ? "guide-open" : ""}`}>
+      <section className={`mini-game-shell game-theme-${world.kind} world-${world.color} ${showGuide ? "guide-open" : ""}`}>
         {showGuide && (
         <aside className="mini-game-brief">
           <span>{world.difficulty} · {world.gameType}</span>
@@ -1538,16 +1550,25 @@ function MiniGameWorld({
                 <span className="scanner-pulse" />
                 SIGNAL RANGE {binaryLow + 1}-{binaryHigh + 1}
               </div>
-              <div className="binary-strip">
-                {visibleBinary.map(({ value, active, pivot }) => (
-                  <span
-                    className={[active ? "active" : "", pivot ? "pivot" : ""].join(" ")}
-                    key={value}
-                  >
-                    <small>{pivot ? "MID" : active ? "OPEN" : "CUT"}</small>
-                    {value}
-                  </span>
-                ))}
+              <div className="binary-radar">
+                <i className="radar-ring ring-one" />
+                <i className="radar-ring ring-two" />
+                <i className="radar-sweep" />
+                <div className="radar-target">
+                  <small>LOCK TARGET</small>
+                  <strong>42</strong>
+                </div>
+                <div className="binary-strip">
+                  {visibleBinary.map(({ value, active, pivot }) => (
+                    <span
+                      className={[active ? "active" : "", pivot ? "pivot" : ""].join(" ")}
+                      key={value}
+                    >
+                      <small>{pivot ? "MID" : active ? "OPEN" : "CUT"}</small>
+                      {value}
+                    </span>
+                  ))}
+                </div>
               </div>
               <div className="mini-rule-line">
                 <strong>Target 42</strong>
@@ -1575,20 +1596,29 @@ function MiniGameWorld({
                   Compare positions {sortCursor + 1} and {sortCursor + 2}
                 </strong>
               </div>
-              <div className="packet-row">
-                {packets.map((packet, index) => (
-                  <span
-                    className={[
-                      "mini-packet",
-                      index === sortCursor || index === sortCursor + 1
-                        ? "comparing"
-                        : "",
-                    ].join(" ")}
-                    key={`${packet}-${index}`}
-                  >
-                    {packet}
-                  </span>
-                ))}
+              <div className="packet-factory">
+                <div className="factory-scanner">
+                  <span>PAIR SCANNER</span>
+                </div>
+                <div className="packet-row">
+                  {packets.map((packet, index) => (
+                    <span
+                      className={[
+                        "mini-packet",
+                        index === sortCursor || index === sortCursor + 1
+                          ? "comparing"
+                          : "",
+                      ].join(" ")}
+                      key={`${packet}-${index}`}
+                    >
+                      <small>PKT</small>
+                      {packet}
+                    </span>
+                  ))}
+                </div>
+                <div className="conveyor-belt" aria-hidden="true">
+                  {packets.map((_, index) => <i key={index} />)}
+                </div>
               </div>
               <div className="sort-decision">
                 <p>
@@ -1625,21 +1655,26 @@ function MiniGameWorld({
                   ))}
                 </div>
               )}
-              <div className="stack-tower">
-                {stack.map((crate, index) => (
-                  <button
-                    className={index === stack.length - 1 ? "top" : ""}
-                    disabled={complete || stackPhase === "load"}
-                    key={crate}
-                    onClick={() => popStack(crate)}
-                    type="button"
-                  >
-                    {crate}
-                  </button>
-                ))}
-                {stack.length === 0 && (
-                  <span className="empty-stack">EMPTY LIFT</span>
-                )}
+              <div className="elevator-shaft">
+                <div className="elevator-cable" />
+                <span className="floor-label">TOP EXITS FIRST</span>
+                <div className="stack-tower">
+                  {stack.map((crate, index) => (
+                    <button
+                      className={index === stack.length - 1 ? "top" : ""}
+                      disabled={complete || stackPhase === "load"}
+                      key={crate}
+                      onClick={() => popStack(crate)}
+                      type="button"
+                    >
+                      <small>MEMORY CRATE</small>
+                      {crate}
+                    </button>
+                  ))}
+                  {stack.length === 0 && (
+                    <span className="empty-stack">EMPTY LIFT</span>
+                  )}
+                </div>
               </div>
               <p>
                 {stackPhase === "load"
@@ -1658,6 +1693,10 @@ function MiniGameWorld({
                 {treeStep >= 3 && <span>RIGHT 68</span>}
               </div>
               <div className="tree-node-map">
+                <i className="tree-branch branch-root-left" />
+                <i className="tree-branch branch-root-right" />
+                <i className="tree-branch branch-inner-left" />
+                <i className="tree-branch branch-inner-right" />
                 <span className={treeStep === 0 ? "current" : "visited"}>50</span>
                 {[25, 75, 55, 60, 68, 90].map((value) => {
                   const isChoice = treeChoices.includes(value);
@@ -1690,6 +1729,10 @@ function MiniGameWorld({
 
           {world.kind === "graph" && (
             <section className="graph-mini-game" aria-label="BFS queue rescue">
+              <div className="rescue-dispatch">
+                <span>RESCUE DISPATCH</span>
+                <strong>Visit the station waiting at the front of the queue.</strong>
+              </div>
               <div className="graph-network">
                 <i className="edge edge-ab" />
                 <i className="edge edge-ac" />
@@ -1726,15 +1769,22 @@ function MiniGameWorld({
                 </div>
               </div>
               <div className="weighted-map">
+                <i className="city-road road-one" />
+                <i className="city-road road-two" />
+                <i className="city-road road-three" />
+                <i className="city-road road-four" />
+                <span className="city-origin">0</span>
                 {currentDijkstra.frontier.map((route) => (
                   <button
+                    className={`city-node city-${route.split(":")[0].toLowerCase()}`}
                     disabled={complete}
                     key={route}
                     onClick={() => chooseDijkstra(route.split(":")[0])}
                     type="button"
                   >
                     <small>FRONTIER</small>
-                    {route}
+                    <strong>{route.split(":")[0]}</strong>
+                    <span>cost {route.split(":")[1]}</span>
                   </button>
                 ))}
               </div>
@@ -1744,24 +1794,30 @@ function MiniGameWorld({
 
           {world.kind === "greedy" && (
             <section className="greedy-mini-game" aria-label="Greedy interval planner">
-              <div className="timeline-scale">
-                {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((tick) => (
-                  <span key={tick}>{tick}</span>
-                ))}
-              </div>
-              <div className="interval-row">
-                {GREEDY_INTERVALS.map((interval) => (
-                  <button
-                    className={greedySelected.includes(interval.id) ? "selected" : ""}
-                    disabled={complete || greedySelected.includes(interval.id)}
-                    key={interval.id}
-                    onClick={() => chooseGreedy(interval.id)}
-                    type="button"
-                  >
-                    <span>{interval.label}</span>
-                    <small>finishes {interval.finish}</small>
-                  </button>
-                ))}
+              <div className="schedule-wall">
+                <div className="timeline-scale">
+                  {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((tick) => (
+                    <span key={tick}>{tick}</span>
+                  ))}
+                </div>
+                <div className="interval-row">
+                  {GREEDY_INTERVALS.map((interval, index) => (
+                    <button
+                      className={greedySelected.includes(interval.id) ? "selected" : ""}
+                      disabled={complete || greedySelected.includes(interval.id)}
+                      key={interval.id}
+                      onClick={() => chooseGreedy(interval.id)}
+                      style={{
+                        gridColumn: `${interval.start + 1} / ${interval.finish + 1}`,
+                        gridRow: index + 1,
+                      }}
+                      type="button"
+                    >
+                      <span>EVENT {interval.label}</span>
+                      <small>{interval.start}:00-{interval.finish}:00</small>
+                    </button>
+                  ))}
+                </div>
               </div>
               <p>Goal: select the most compatible events by earliest finish time.</p>
             </section>
@@ -1775,13 +1831,16 @@ function MiniGameWorld({
                   fib({dpIndex}) = fib({Math.max(0, dpIndex - 1)}) + fib({Math.max(0, dpIndex - 2)})
                 </strong>
               </div>
-              <div className="memo-row">
-                {dpVisible.map(({ value, visible, active }, index) => (
-                  <span className={active ? "active" : ""} key={index}>
-                    <small>fib({index})</small>
-                    {visible ? value : active ? "?" : "locked"}
-                  </span>
-                ))}
+              <div className="memo-forge">
+                <div className="forge-core"><span>CACHE</span></div>
+                <div className="memo-row">
+                  {dpVisible.map(({ value, visible, active }, index) => (
+                    <span className={active ? "active" : ""} key={index}>
+                      <small>fib({index})</small>
+                      <strong>{visible ? value : active ? "?" : "locked"}</strong>
+                    </span>
+                  ))}
+                </div>
               </div>
               <div className="mini-actions">
                 {[1, 2, 3, 5].map((value) => (
