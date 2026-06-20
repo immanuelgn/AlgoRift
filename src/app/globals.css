@@ -7915,3 +7915,467 @@ a:focus-visible {
     font-size: 0;
   }
 }
+
+/* Portfolio polish pass: make the library feel like a playable arcade, not a syllabus. */
+.world-view {
+  padding-left: max(22px, calc((100vw - 1360px) / 2));
+  padding-right: max(22px, calc((100vw - 1360px) / 2));
+}
+
+.curriculum-heading {
+  align-items: center;
+  background: #11162d;
+  border: 3px solid #11162d;
+  border-radius: 24px;
+  box-shadow: 0 10px 0 rgba(17,22,45,0.14);
+  color: #fffdf3;
+  margin-bottom: 18px;
+  padding: clamp(22px, 4vw, 36px);
+}
+
+.curriculum-heading h1 {
+  font-size: clamp(42px, 6vw, 76px);
+  letter-spacing: -0.07em;
+  line-height: 0.92;
+  margin: 10px 0 12px;
+  max-width: 840px;
+}
+
+.curriculum-heading p {
+  color: #c8cfdf;
+  font-size: clamp(16px, 2vw, 21px);
+  line-height: 1.45;
+  max-width: 720px;
+}
+
+.curriculum-heading .section-label {
+  color: #a7f35b;
+}
+
+.curriculum-heading .world-summary {
+  background: #fffdf3;
+  color: #11162d;
+  min-width: 150px;
+}
+
+.curriculum-guide {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 1360px;
+}
+
+.curriculum-guide article {
+  background: #fffdf3;
+  min-height: 112px;
+}
+
+.path-status {
+  border: 3px solid #11162d;
+  box-shadow: 0 7px 0 rgba(17,22,45,0.12);
+  max-width: 1360px;
+}
+
+.mini-game-library {
+  align-items: stretch;
+  display: grid;
+  gap: 22px;
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+  max-width: 1360px;
+}
+
+.mini-game-library .world-level {
+  display: block;
+}
+
+.mini-game-library .level-card.path-card {
+  background: #fffdf3;
+  border: 3px solid #11162d;
+  border-left: 3px solid #11162d;
+  border-radius: 24px;
+  box-shadow: 0 9px 0 rgba(17,22,45,0.13);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: 500px;
+  overflow: hidden;
+  padding: 0;
+  position: relative;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.mini-game-library .world-level.available .level-card.path-card:hover {
+  box-shadow: 0 13px 0 rgba(17,22,45,0.16);
+  transform: translateY(-3px);
+}
+
+.mini-game-library .world-level.recommended .level-card.path-card {
+  box-shadow:
+    0 0 0 7px rgba(255,216,77,0.36),
+    0 12px 0 rgba(17,22,45,0.16);
+}
+
+.mini-game-library .world-level.locked {
+  opacity: 1;
+}
+
+.mini-game-library .world-level.locked .level-card.path-card {
+  background: #f7f6ef;
+  color: #676d7f;
+}
+
+.mini-game-library .path-card-visual {
+  align-items: center;
+  align-self: stretch;
+  border-bottom: 3px solid #11162d;
+  display: flex;
+  justify-content: center;
+  min-height: 190px;
+  overflow: hidden;
+  position: relative;
+}
+
+.mini-game-library .visual-binary { background: radial-gradient(circle at 50% 55%, #193f66, #071624 72%); }
+.mini-game-library .visual-sort { background: linear-gradient(155deg, #ffe27a, #ff9b42); }
+.mini-game-library .visual-stack { background: linear-gradient(90deg, #1e3444 0 16%, #b6cbd6 16% 84%, #1e3444 84%); }
+.mini-game-library .visual-tree { background: linear-gradient(#aee9b8 0 65%, #9a6238 65%); }
+.mini-game-library .visual-graph { background: linear-gradient(145deg, #6556d9, #28235b); }
+.mini-game-library .visual-dijkstra { background: linear-gradient(135deg, #cfe0c8, #e7f0df); }
+.mini-game-library .visual-greedy { background: linear-gradient(135deg, #fff0bf, #ffe5ee); }
+.mini-game-library .visual-dp { background: radial-gradient(circle at 50% 62%, rgba(255,91,125,0.6), transparent 25%), #14172c; }
+
+.mini-game-library .path-card-visual > span {
+  font-size: 64px;
+  left: 18px;
+  opacity: 0.95;
+  top: 12px;
+}
+
+.mini-game-library .level-card-top,
+.mini-game-library .path-card > small,
+.mini-game-library .path-card > h2,
+.mini-game-library .path-card > strong,
+.mini-game-library .path-card > .mini-game-type,
+.mini-game-library .path-card > p,
+.mini-game-library .path-card > .card-learn-line,
+.mini-game-library .path-card > button,
+.mini-game-library .path-card > .unlock-note {
+  margin-left: 22px;
+  margin-right: 22px;
+}
+
+.mini-game-library .level-card-top {
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.mini-game-library .level-card-top span:last-child {
+  background: #eef1f6;
+  border-radius: 999px;
+  color: #11162d;
+  padding: 5px 8px;
+}
+
+.mini-game-library .path-card > small,
+.mini-game-library .path-card > .mini-game-type {
+  display: block;
+}
+
+.mini-game-library .path-card > h2 {
+  font-size: 34px;
+  letter-spacing: -0.05em;
+  line-height: 0.98;
+  margin-bottom: 8px;
+  margin-top: 10px;
+}
+
+.mini-game-library .path-card > strong {
+  color: #11162d;
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+
+.mini-game-library .path-card > .mini-game-type {
+  background: color-mix(in srgb, var(--world-color) 28%, #fffdf3);
+  border: 2px solid #11162d;
+  border-radius: 999px;
+  font-family: Consolas, monospace;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  padding: 7px 10px;
+  width: fit-content;
+}
+
+.mini-game-library .path-card > p {
+  color: #4f586d;
+  display: block;
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1.45;
+  margin-top: 14px;
+}
+
+.mini-game-library .path-card > .card-learn-line {
+  display: flex;
+}
+
+.mini-game-library .path-card > button,
+.mini-game-library .path-card > .unlock-note {
+  grid-column: auto;
+  grid-row: auto;
+  justify-content: center;
+  margin-bottom: 22px;
+  margin-top: auto;
+}
+
+.mini-game-library .path-card > button {
+  font-size: 14px;
+  min-height: 52px;
+}
+
+.mini-game-library .unlock-note {
+  background: #fff;
+  border: 2px dashed #b8bfcc;
+  border-radius: 14px;
+  max-width: none;
+  padding: 13px;
+}
+
+.preview-scene {
+  height: 124px;
+  width: 230px;
+}
+
+.preview-binary.preview-scene {
+  align-items: center;
+  border: 2px solid #67e8f9;
+  border-radius: 999px 999px 28px 28px;
+  justify-content: center;
+}
+
+.preview-binary .scope-ring {
+  border: 1px solid rgba(103,232,249,0.35);
+  border-radius: 50%;
+  height: 86px;
+  position: absolute;
+  width: 170px;
+}
+
+.preview-binary span,
+.preview-sort-bars span,
+.preview-city i,
+.preview-memo i {
+  align-items: center;
+  background: #fffdf3;
+  border: 2px solid #11162d;
+  border-radius: 10px;
+  color: #11162d;
+  display: flex;
+  font-family: Consolas, monospace;
+  font-size: 12px;
+  font-weight: 900;
+  height: 42px;
+  justify-content: center;
+  min-width: 54px;
+}
+
+.preview-binary .hot,
+.preview-sort-bars .swap,
+.preview-tree .hot,
+.preview-nodes .hot,
+.preview-intervals .hot,
+.preview-memo .hot {
+  background: #ffd84d;
+  box-shadow: 0 0 22px rgba(255,216,77,0.65);
+}
+
+.preview-sort-bars.preview-scene {
+  align-items: end;
+  background: #273242;
+  border: 3px solid #11162d;
+  border-radius: 16px;
+  padding: 20px 18px 30px;
+}
+
+.preview-sort-bars span {
+  height: 66px;
+  min-width: 42px;
+}
+
+.preview-sort-bars span:nth-child(3) { height: 84px; }
+.preview-sort-bars span:nth-child(4) { height: 48px; }
+
+.preview-sort-bars i {
+  background: repeating-linear-gradient(90deg, #8792a0 0 8px, #4d5866 8px 16px);
+  border-radius: 0;
+  bottom: 14px;
+  height: 12px;
+  left: 18px;
+  position: absolute;
+  right: 18px;
+  width: auto;
+}
+
+.preview-stack.preview-scene {
+  align-items: center;
+  background: #233847;
+  border: 3px solid #11162d;
+  border-radius: 14px;
+  flex-direction: column-reverse;
+  justify-content: center;
+  padding: 14px;
+}
+
+.preview-stack small {
+  color: #ffd84d;
+  font-family: Consolas, monospace;
+  font-weight: 900;
+  position: absolute;
+  right: 18px;
+  top: 14px;
+}
+
+.preview-tree.preview-scene,
+.preview-nodes.preview-scene,
+.preview-city.preview-scene {
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-tree b,
+.preview-nodes b,
+.preview-city b {
+  background: rgba(17,22,45,0.65);
+  height: 4px;
+  position: absolute;
+  transform-origin: left center;
+  width: 94px;
+  z-index: 1;
+}
+
+.preview-tree b:nth-of-type(1) { transform: rotate(28deg); }
+.preview-tree b:nth-of-type(2) { transform: rotate(152deg); }
+.preview-nodes b:nth-of-type(1) { transform: rotate(18deg); }
+.preview-nodes b:nth-of-type(2) { transform: rotate(154deg); }
+.preview-city b:nth-of-type(1) { transform: rotate(-16deg); }
+.preview-city b:nth-of-type(2) { transform: rotate(26deg); }
+
+.preview-tree i,
+.preview-nodes i,
+.preview-city i {
+  position: relative;
+  z-index: 2;
+}
+
+.preview-city small,
+.preview-intervals small,
+.preview-memo b {
+  background: #11162d;
+  border-radius: 999px;
+  color: #fffdf3;
+  font-family: Consolas, monospace;
+  font-size: 9px;
+  font-weight: 900;
+  padding: 7px 10px;
+  position: absolute;
+  right: 12px;
+  top: 12px;
+}
+
+.preview-intervals.preview-scene {
+  align-items: center;
+  background:
+    linear-gradient(90deg, transparent 0 24%, rgba(17,22,45,0.18) 24% 25%, transparent 25% 49%, rgba(17,22,45,0.18) 49% 50%, transparent 50% 74%, rgba(17,22,45,0.18) 74% 75%, transparent 75%),
+    #fffdf3;
+  border: 3px solid #11162d;
+  border-radius: 16px;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.preview-intervals i {
+  height: 24px;
+}
+
+.preview-memo.preview-scene {
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-memo i {
+  min-width: 44px;
+}
+
+.move-coach {
+  align-items: flex-start;
+  background: #fffdf3;
+  border: 2px solid #11162d;
+  border-radius: 16px;
+  box-shadow: 0 5px 0 rgba(17,22,45,0.11);
+  display: flex;
+  gap: 14px;
+  margin: 0 0 22px;
+  padding: 14px 16px;
+}
+
+.move-coach span {
+  background: #ffd84d;
+  border: 2px solid #11162d;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  font-family: Consolas, monospace;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  padding: 7px 10px;
+}
+
+.move-coach p {
+  color: #222a3f;
+  font-size: 14px;
+  font-weight: 850;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.game-theme-binary .move-coach,
+.game-theme-graph .move-coach,
+.game-theme-dp .move-coach {
+  background: rgba(255,253,243,0.94);
+}
+
+@media (max-width: 980px) {
+  .curriculum-heading,
+  .curriculum-guide,
+  .path-status {
+    grid-template-columns: 1fr;
+  }
+
+  .curriculum-heading {
+    align-items: flex-start;
+    display: grid;
+  }
+
+  .mini-game-library {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .mini-game-library .path-card-visual {
+    min-height: 160px;
+  }
+
+  .preview-scene {
+    transform: scale(0.84);
+  }
+
+  .move-coach {
+    display: block;
+  }
+
+  .move-coach p {
+    margin-top: 10px;
+  }
+}

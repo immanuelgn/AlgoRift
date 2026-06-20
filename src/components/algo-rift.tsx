@@ -254,24 +254,37 @@ function BrandMark() {
 
 function GamePreview({ kind }: { kind: MiniGameKind }) {
   if (kind === "binary") {
-    return <div className="preview-binary"><i /><i /><i className="active" /><i /><i /></div>;
+    return (
+      <div className="preview-binary preview-scene">
+        <i className="scope-ring" />
+        <span>LOW</span><span className="hot">MID</span><span>HIGH</span>
+      </div>
+    );
   }
   if (kind === "sort") {
-    return <div className="preview-sort-bars"><i /><i /><i /><i /></div>;
+    return (
+      <div className="preview-sort-bars preview-scene">
+        <span>6</span><span className="swap">3</span><span>8</span><span>1</span>
+        <i />
+      </div>
+    );
   }
   if (kind === "stack") {
-    return <div className="preview-stack"><i>A</i><i>B</i><i>C</i></div>;
+    return <div className="preview-stack preview-scene"><i>A</i><i>B</i><i>C</i><small>TOP</small></div>;
   }
   if (kind === "tree") {
-    return <div className="preview-tree"><i>50</i><i>25</i><i>75</i></div>;
+    return <div className="preview-tree preview-scene"><i>50</i><i>25</i><i className="hot">75</i><b /><b /></div>;
   }
-  if (kind === "graph" || kind === "dijkstra") {
-    return <div className="preview-nodes"><i>A</i><i>B</i><i>C</i></div>;
+  if (kind === "graph") {
+    return <div className="preview-nodes preview-scene"><i>A</i><i className="hot">B</i><i>C</i><b /><b /></div>;
+  }
+  if (kind === "dijkstra") {
+    return <div className="preview-city preview-scene"><i>0</i><i>2</i><i>4</i><b /><b /><small>cost</small></div>;
   }
   if (kind === "greedy") {
-    return <div className="preview-intervals"><i /><i /><i /></div>;
+    return <div className="preview-intervals preview-scene"><i /><i className="hot" /><i /><small>finish first</small></div>;
   }
-  return <div className="preview-memo"><i>1</i><i>2</i><i>3</i><i>5</i></div>;
+  return <div className="preview-memo preview-scene"><i>1</i><i>2</i><i className="hot">?</i><i>5</i><b>cache</b></div>;
 }
 
 export function AlgoRift() {
@@ -985,9 +998,10 @@ export function AlgoRift() {
           <div className="world-heading curriculum-heading">
             <div>
               <span className="section-label"><Map size={15} /> Your progress</span>
-              <h1>Learning path</h1>
+              <h1>Pick your next algorithm game</h1>
               <p>
-                Play the highlighted step. Master it to unlock the next.
+                Each card is a different toy box: scan, swap, route, schedule,
+                or forge the rule until it clicks.
               </p>
             </div>
             <div className="world-summary">
@@ -995,6 +1009,30 @@ export function AlgoRift() {
               <span>games mastered</span>
             </div>
           </div>
+
+          <section className="curriculum-guide" aria-label="How AlgoRift works">
+            <article>
+              <span>1</span>
+              <div>
+                <strong>Play the mechanic</strong>
+                <p>The correct move is the algorithm rule, not a separate quiz.</p>
+              </div>
+            </article>
+            <article>
+              <span>2</span>
+              <div>
+                <strong>Watch the board react</strong>
+                <p>Wrong moves explain why; right moves reshape the game state.</p>
+              </div>
+            </article>
+            <article>
+              <span>3</span>
+              <div>
+                <strong>Unlock harder ideas</strong>
+                <p>Search and sorting lead toward graphs, greedy choices, and DP.</p>
+              </div>
+            </article>
+          </section>
 
           <section className="path-status" aria-label="Progression summary">
             <div>
@@ -1462,6 +1500,26 @@ function MiniGameWorld({
     visible: index < dpIndex,
     active: index === dpIndex,
   }));
+  const currentLeftPacket = packets[sortCursor] ?? packets[Math.max(0, packets.length - 2)];
+  const currentRightPacket = packets[sortCursor + 1] ?? packets[packets.length - 1];
+  const moveCoach =
+    world.kind === "binary"
+      ? `The middle value is ${pivotValue}. Compare it to 42, then cut the half that cannot win.`
+      : world.kind === "sort"
+        ? `Compare ${currentLeftPacket} and ${currentRightPacket}. Swap only when the left packet is larger.`
+        : world.kind === "stack"
+          ? stackPhase === "load"
+            ? "Push crates into the lift. The newest crate becomes the only legal exit."
+            : `Pop the top crate first: ${stack[stack.length - 1] ?? "nothing"} is blocking everything below it.`
+          : world.kind === "tree"
+            ? `${currentTreeNode} is your current branch. Smaller targets go left; larger targets go right.`
+            : world.kind === "graph"
+              ? "BFS is a rescue line. Serve the front of the queue before touching later discoveries."
+              : world.kind === "dijkstra"
+                ? "Frontier costs are tentative. Compare every visible cost and lock the smallest one."
+                : world.kind === "greedy"
+                  ? "Take the event that finishes earliest and still fits, so future slots stay open."
+                  : `Use cached answers: fib(${dpIndex}) depends on fib(${Math.max(0, dpIndex - 1)}) and fib(${Math.max(0, dpIndex - 2)}).`;
   const progressPercent = Math.min(
     100,
     world.kind === "binary"
@@ -1542,6 +1600,10 @@ function MiniGameWorld({
           >
             <span>{complete ? <Check size={16} /> : <Sparkles size={16} />}</span>
             <p>{message}</p>
+          </div>
+          <div className="move-coach">
+            <span>MAKE THE RULE MOVE</span>
+            <p>{moveCoach}</p>
           </div>
 
           {world.kind === "binary" && (
