@@ -5214,6 +5214,111 @@ a:focus-visible {
   width: fit-content;
 }
 
+.curriculum-heading {
+  margin-bottom: 22px;
+}
+
+.curriculum-guide {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 0 auto 28px;
+  max-width: 1320px;
+}
+
+.curriculum-guide article {
+  align-items: flex-start;
+  background: #fffdf3;
+  border: 3px solid #11162d;
+  border-radius: 18px;
+  box-shadow: 0 7px 0 rgba(17, 22, 45, 0.12);
+  display: flex;
+  gap: 13px;
+  padding: 18px;
+}
+
+.curriculum-guide article > span {
+  align-items: center;
+  background: #ffd84d;
+  border: 2px solid #11162d;
+  border-radius: 999px;
+  display: flex;
+  flex: 0 0 auto;
+  font-weight: 1000;
+  height: 34px;
+  justify-content: center;
+  width: 34px;
+}
+
+.curriculum-guide strong,
+.curriculum-guide p {
+  display: block;
+}
+
+.curriculum-guide p {
+  color: #626b80;
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 5px 0 0;
+}
+
+.mini-game-library {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0 auto;
+  max-width: 1320px;
+  padding: 0;
+}
+
+.mini-game-library .world-level {
+  display: block;
+  margin: 0;
+  min-height: 0;
+  padding: 0;
+}
+
+.mini-game-library .level-node,
+.mini-game-library .path-line {
+  display: none;
+}
+
+.mini-game-library .level-card {
+  height: 100%;
+  margin: 0;
+  padding: 26px;
+}
+
+.mini-game-library .world-level.recommended .level-card {
+  box-shadow:
+    0 0 0 7px rgba(255, 216, 77, 0.33),
+    0 12px 0 rgba(17, 22, 45, 0.15);
+}
+
+.mini-game-library .world-level.recommended .level-card-top span:last-child {
+  background: #ffd84d;
+  color: #11162d;
+}
+
+.card-learn-line {
+  align-items: flex-start;
+  background: #f6f3ff;
+  border-radius: 12px;
+  color: #4d5670;
+  display: flex;
+  font-size: 13px;
+  font-weight: 750;
+  gap: 8px;
+  line-height: 1.45;
+  margin: 15px 0;
+  padding: 12px;
+}
+
+.card-learn-line svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
 .mini-game-view {
   background:
     linear-gradient(rgba(17, 22, 45, 0.05) 1px, transparent 1px),
@@ -5357,6 +5462,49 @@ a:focus-visible {
   padding: clamp(20px, 4vw, 38px);
 }
 
+.mini-game-hud {
+  align-items: center;
+  background: #11162d;
+  border-radius: 16px;
+  color: #fffdf3;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: auto 1fr auto;
+  margin-bottom: 24px;
+  padding: 13px 16px;
+}
+
+.mini-game-hud > div:first-child,
+.mini-game-hud > div:last-child {
+  display: flex;
+  flex-direction: column;
+}
+
+.mini-game-hud small {
+  color: #98a3bc;
+  font-family: Consolas, monospace;
+  font-size: 8px;
+  letter-spacing: 0.12em;
+}
+
+.mini-game-hud strong {
+  color: #ffd84d;
+}
+
+.mini-progress-track {
+  background: #303a53;
+  border-radius: 999px;
+  height: 10px;
+  overflow: hidden;
+}
+
+.mini-progress-track span {
+  background: linear-gradient(90deg, #67e8f9, #a7f35b);
+  display: block;
+  height: 100%;
+  transition: width 220ms ease;
+}
+
 .binary-game,
 .sort-mini-game,
 .stack-mini-game,
@@ -5374,7 +5522,7 @@ a:focus-visible {
 .binary-strip,
 .packet-row,
 .memo-row,
-.graph-node-row,
+.graph-network,
 .interval-row,
 .weighted-map {
   align-items: center;
@@ -5387,7 +5535,7 @@ a:focus-visible {
 .binary-strip span,
 .mini-packet,
 .memo-row span,
-.graph-node-row button,
+.graph-network button,
 .weighted-map button,
 .interval-row button,
 .stack-tower button {
@@ -5418,6 +5566,52 @@ a:focus-visible {
 .binary-strip span.pivot {
   background: #ffd84d;
   transform: translateY(-8px);
+}
+
+.scanner-status,
+.conveyor-status,
+.stack-mission,
+.memo-equation,
+.route-control {
+  align-items: center;
+  background: #f3f0ff;
+  border: 2px solid #11162d;
+  border-radius: 14px;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  padding: 13px;
+}
+
+.scanner-status,
+.conveyor-status span,
+.stack-mission strong,
+.memo-equation small,
+.route-control span {
+  font-family: Consolas, monospace;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+
+.scanner-pulse {
+  animation: signalPulse 0.7s ease-in-out infinite alternate;
+  background: #ff425f;
+  border-radius: 999px;
+  box-shadow: 0 0 12px #ff425f;
+  height: 10px;
+  width: 10px;
+}
+
+.conveyor-status,
+.stack-mission,
+.memo-equation {
+  flex-direction: column;
+}
+
+.conveyor-status strong,
+.stack-mission span {
+  text-align: center;
 }
 
 .binary-strip small,
@@ -5459,7 +5653,7 @@ a:focus-visible {
 }
 
 .mini-actions button,
-.graph-node-row button,
+.graph-network button,
 .weighted-map button,
 .interval-row button,
 .stack-tower button {
@@ -5478,7 +5672,7 @@ a:focus-visible {
 }
 
 .mini-actions button:hover,
-.graph-node-row button:hover,
+.graph-network button:hover,
 .weighted-map button:hover,
 .interval-row button:hover,
 .stack-tower button:hover {
@@ -5487,7 +5681,7 @@ a:focus-visible {
 }
 
 .mini-actions button:disabled,
-.graph-node-row button:disabled,
+.graph-network button:disabled,
 .weighted-map button:disabled,
 .interval-row button:disabled,
 .stack-tower button:disabled {
@@ -5506,6 +5700,28 @@ a:focus-visible {
   width: 94px;
 }
 
+.mini-packet.comparing {
+  background: #67e8f9;
+  box-shadow:
+    0 7px 0 rgba(17, 22, 45, 0.18),
+    0 0 0 7px rgba(103, 232, 249, 0.22);
+  transform: translateY(-8px);
+}
+
+.sort-decision {
+  background: #fff8d4;
+  border: 2px solid #11162d;
+  border-radius: 16px;
+  padding: 18px;
+}
+
+.sort-decision p {
+  font-size: 18px;
+  font-weight: 900;
+  margin: 0 0 15px;
+  text-align: center;
+}
+
 .stack-tower {
   align-items: center;
   display: flex;
@@ -5522,6 +5738,33 @@ a:focus-visible {
 .stack-tower button.top {
   background: #ffd84d;
   transform: translateX(18px);
+}
+
+.stack-dock {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.stack-dock button {
+  background: #67e8f9;
+  border: 3px solid #11162d;
+  border-radius: 12px;
+  box-shadow: 0 5px 0 rgba(17, 22, 45, 0.16);
+  cursor: pointer;
+  font-weight: 1000;
+  min-height: 52px;
+  padding: 10px 18px;
+}
+
+.empty-stack {
+  border: 3px dashed #8992a8;
+  border-radius: 14px;
+  color: #70798e;
+  font-family: Consolas, monospace;
+  font-weight: 900;
+  padding: 24px 60px;
 }
 
 .tree-node-map {
@@ -5552,20 +5795,76 @@ a:focus-visible {
   background: #a7f35b;
 }
 
-.graph-node-row button {
+.tree-node-map .current {
+  background: #ffd84d;
+  box-shadow:
+    0 7px 0 rgba(17, 22, 45, 0.18),
+    0 0 0 7px rgba(255, 216, 77, 0.25);
+}
+
+.tree-node-map .visited {
+  background: #67e8f9;
+}
+
+.path-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.path-chip-row span {
+  background: #11162d;
+  border-radius: 999px;
+  color: #a7f35b;
+  font-family: Consolas, monospace;
+  font-size: 9px;
+  font-weight: 900;
+  padding: 8px 11px;
+}
+
+.graph-network {
+  display: grid;
+  gap: 38px 64px;
+  grid-template-columns: repeat(3, 84px);
+  justify-content: center;
+  position: relative;
+}
+
+.graph-network button {
   border-radius: 999px;
   font-size: 28px;
   height: 84px;
   width: 84px;
+  z-index: 2;
 }
 
-.graph-node-row button.active {
+.graph-network button:first-of-type {
+  grid-column: 2;
+}
+
+.graph-network button.active {
   background: #ffd84d;
 }
 
-.graph-node-row button.done {
+.graph-network button.done {
   background: #a7f35b;
 }
+
+.graph-network .edge {
+  background: #8c96aa;
+  height: 4px;
+  position: absolute;
+  transform-origin: left center;
+  width: 115px;
+  z-index: 1;
+}
+
+.edge-ab { left: 50%; top: 70px; transform: rotate(145deg); }
+.edge-ac { left: 50%; top: 70px; transform: rotate(35deg); }
+.edge-bd { left: 20%; top: 185px; transform: rotate(125deg); }
+.edge-be { left: 22%; top: 185px; transform: rotate(35deg); }
+.edge-cf { left: 70%; top: 185px; transform: rotate(55deg); }
 
 .queue-strip {
   background: #11162d;
@@ -5586,6 +5885,31 @@ a:focus-visible {
   min-width: 150px;
 }
 
+.route-control {
+  justify-content: space-between;
+}
+
+.route-origin {
+  background: #a7f35b;
+  border: 2px solid #11162d;
+  border-radius: 999px;
+  color: #11162d;
+  padding: 9px 12px;
+}
+
+.route-control > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.route-control > div span {
+  background: #11162d;
+  border-radius: 999px;
+  color: #67e8f9;
+  padding: 8px 10px;
+}
+
 .interval-row button {
   align-items: center;
   background: #fffdf3;
@@ -5596,6 +5920,20 @@ a:focus-visible {
 
 .interval-row button.selected {
   background: #a7f35b;
+}
+
+.timeline-scale {
+  border-bottom: 4px solid #11162d;
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  padding-bottom: 8px;
+}
+
+.timeline-scale span {
+  font-family: Consolas, monospace;
+  font-size: 10px;
+  font-weight: 900;
+  text-align: center;
 }
 
 .memo-row span {
@@ -5610,6 +5948,11 @@ a:focus-visible {
 
 .memo-row span.active {
   background: #ffd84d;
+}
+
+.memo-equation strong {
+  font-family: Consolas, monospace;
+  font-size: clamp(15px, 3vw, 24px);
 }
 
 .algorithm-runner-view {
@@ -6230,6 +6573,19 @@ a:focus-visible {
     padding: 0;
   }
 
+  .curriculum-guide,
+  .mini-game-library {
+    grid-template-columns: 1fr;
+  }
+
+  .curriculum-guide {
+    padding: 0 12px;
+  }
+
+  .mini-game-library {
+    padding: 0 12px;
+  }
+
   .mini-game-toolbar {
     border-radius: 0;
     margin-bottom: 0;
@@ -6254,6 +6610,15 @@ a:focus-visible {
   .mini-game-board {
     min-height: auto;
     padding: 18px;
+  }
+
+  .mini-game-hud {
+    grid-template-columns: 1fr auto;
+  }
+
+  .mini-progress-track {
+    grid-column: 1 / -1;
+    grid-row: 2;
   }
 
   .binary-game,
@@ -6289,9 +6654,28 @@ a:focus-visible {
   }
 
   .tree-node-map span,
-  .graph-node-row button {
+  .graph-network button {
     height: 66px;
     width: 66px;
+  }
+
+  .graph-network {
+    gap: 30px 32px;
+    grid-template-columns: repeat(3, 66px);
+  }
+
+  .graph-network .edge {
+    opacity: 0.55;
+    width: 84px;
+  }
+
+  .route-control {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .empty-stack {
+    padding: 20px 34px;
   }
 
   .algorithm-runner-view {

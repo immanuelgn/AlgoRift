@@ -450,7 +450,7 @@ export function AlgoRift() {
   const selectedWorld =
     worlds.find((world) => world.level === selectedWorldLevel) ?? worlds[0];
   const nextMission = {
-    label: `${nextWorld.level}-1`,
+    label: `G${nextWorld.level}`,
     title: nextWorld.title,
     topics: nextWorld.topics,
     reward: `+${220 + nextWorld.level * 60} XP`,
@@ -614,6 +614,12 @@ export function AlgoRift() {
       setAuthError(error.message);
       return;
     }
+    const freshProgress = { ...DEFAULT_PROGRESS };
+    progressRef.current = freshProgress;
+    setProgress(freshProgress);
+    window.localStorage.removeItem(STORAGE_KEY);
+    setSelectedWorldLevel(1);
+    setView("home");
     setAccountOpen(false);
     setCloudHydrated(false);
     setCloudStatus("local");
@@ -645,7 +651,7 @@ export function AlgoRift() {
             type="button"
             onClick={() => changeView("world")}
           >
-            <Map size={16} /> World
+            <Map size={16} /> Games
           </button>
           <button type="button" onClick={showLearningGuide}>
             <Terminal size={16} /> Learn
@@ -737,8 +743,8 @@ export function AlgoRift() {
                 >
                   <Play size={18} fill="currentColor" />
                   {progress.completedLevel >= worlds.length
-                    ? `Replay World ${worlds.length}`
-                    : `Enter World ${nextPlayableWorld}`}
+                    ? `Replay Game ${worlds.length}`
+                    : `Start Game ${nextPlayableWorld}`}
                 </button>
                 <button
                   className="game-secondary"
@@ -751,7 +757,7 @@ export function AlgoRift() {
               <div className="first-mission">
                 <span className="mission-number">{nextMission.label}</span>
                 <div>
-                  <small>NEXT SECTOR</small>
+                  <small>NEXT MINI-GAME</small>
                   <strong>{nextMission.title}</strong>
                   <span>{nextMission.topics}</span>
                 </div>
@@ -855,10 +861,10 @@ export function AlgoRift() {
               </span>
               <h2>
                 {progress.completedLevel === 0
-                  ? "World 1 is ready."
+                  ? "Game 1 is ready."
                   : progress.completedLevel >= worlds.length
-                    ? "All current worlds are cleared."
-                    : `World ${progress.completedLevel + 1} is unlocked.`}
+                    ? "All current games are mastered."
+                    : `Game ${progress.completedLevel + 1} is unlocked.`}
               </h2>
               <p>
                 {user
@@ -875,7 +881,7 @@ export function AlgoRift() {
                 <span style={{ width: `${(progress.completedLevel / worlds.length) * 100}%` }} />
               </div>
               <button type="button" onClick={() => changeView("world")}>
-                Open world map <ArrowRight size={16} />
+                Open game library <ArrowRight size={16} />
               </button>
             </div>
           </section>
@@ -892,26 +898,51 @@ export function AlgoRift() {
 
       {view === "world" && (
         <main className="world-view">
-          <div className="world-heading">
+          <div className="world-heading curriculum-heading">
             <div>
-              <span className="section-label"><Map size={15} /> World map</span>
-              <h1>AlgoRift campaign</h1>
+              <span className="section-label"><Map size={15} /> Learning path</span>
+              <h1>Choose your next mini-game</h1>
               <p>
-                Pick the next unlocked algorithm mini-game. Each one has its
-                own board, rule, and way to win.
+                Start with search, then unlock sorting, data structures,
+                graphs, greedy algorithms, and dynamic programming.
               </p>
             </div>
             <div className="world-summary">
               <strong>{progress.completedLevel} / {worlds.length}</strong>
-              <span>worlds cleared</span>
+              <span>games mastered</span>
             </div>
           </div>
 
-          <section className="world-path">
-            <div className="path-line" />
+          <section className="curriculum-guide" aria-label="How progression works">
+            <article>
+              <span>1</span>
+              <div>
+                <strong>Play the highlighted game</strong>
+                <p>Only the next concept is required. Cleared games stay replayable.</p>
+              </div>
+            </article>
+            <article>
+              <span>2</span>
+              <div>
+                <strong>Learn by making moves</strong>
+                <p>The board reacts immediately and explains why a move works.</p>
+              </div>
+            </article>
+            <article>
+              <span>3</span>
+              <div>
+                <strong>Unlock the next concept</strong>
+                <p>Difficulty increases gradually from Starter to Boss.</p>
+              </div>
+            </article>
+          </section>
+
+          <section className="world-path mini-game-library">
             {worlds.map((world) => {
               const complete = progress.completedLevel >= world.level;
               const playable = world.level <= progress.completedLevel + 1;
+              const recommended =
+                !complete && world.level === progress.completedLevel + 1;
               return (
                 <article
                   className={[
@@ -919,6 +950,7 @@ export function AlgoRift() {
                     `world-${world.color}`,
                     complete ? "complete" : "",
                     playable ? "available" : "locked",
+                    recommended ? "recommended" : "",
                   ].join(" ")}
                   key={world.level}
                 >
@@ -933,12 +965,12 @@ export function AlgoRift() {
                   </div>
                   <div className="level-card">
                     <div className="level-card-top">
-                      <span>WORLD {world.level}</span>
+                      <span>GAME {world.level}</span>
                       <span>
                         {complete
-                          ? "CLEARED"
-                          : playable
-                            ? "PLAYABLE"
+                          ? "MASTERED"
+                          : recommended
+                            ? "PLAY NEXT"
                             : "LOCKED"}
                       </span>
                     </div>
@@ -949,15 +981,19 @@ export function AlgoRift() {
                       {world.difficulty} · {world.gameType}
                     </span>
                     <p>{world.description}</p>
+                    <div className="card-learn-line">
+                      <Terminal size={15} />
+                      <span>{world.lesson}</span>
+                    </div>
                     {playable ? (
                       <button type="button" onClick={() => startWorld(world.level)}>
-                        {complete ? "Replay world" : "Enter world"}
+                        {complete ? "Replay mini-game" : "Start mini-game"}
                         <ArrowRight size={16} />
                       </button>
                     ) : (
                       <span className="unlock-note">
                         <LockKeyhole size={14} />
-                        Clear the prior world
+                        Master Game {world.level - 1} first
                       </span>
                     )}
                   </div>
@@ -1042,8 +1078,12 @@ export function AlgoRift() {
             >
               <Github size={16} /> GitHub
             </a>
-            <a href="https://algorift.vercel.app" target="_blank" rel="noreferrer">
-              Live project <ArrowRight size={15} />
+            <a
+              href="https://www.linkedin.com/in/immanuelgnanaseelan/"
+              target="_blank"
+              rel="noreferrer"
+            >
+              LinkedIn <ArrowRight size={15} />
             </a>
           </div>
         </footer>
@@ -1094,7 +1134,11 @@ function MiniGameWorld({
   const [binaryLow, setBinaryLow] = useState(0);
   const [binaryHigh, setBinaryHigh] = useState(BINARY_VALUES.length - 1);
   const [packets, setPackets] = useState(SORT_START);
-  const [stack, setStack] = useState(["A", "B", "C"]);
+  const [sortCursor, setSortCursor] = useState(0);
+  const [sortPass, setSortPass] = useState(1);
+  const [stack, setStack] = useState<string[]>([]);
+  const [stackDock, setStackDock] = useState(["A", "B", "C"]);
+  const [stackPhase, setStackPhase] = useState<"load" | "dispatch">("load");
   const [treeStep, setTreeStep] = useState(0);
   const [graphStep, setGraphStep] = useState(0);
   const [dijkstraStep, setDijkstraStep] = useState(0);
@@ -1130,7 +1174,11 @@ function MiniGameWorld({
     setBinaryLow(0);
     setBinaryHigh(BINARY_VALUES.length - 1);
     setPackets(SORT_START);
-    setStack(["A", "B", "C"]);
+    setSortCursor(0);
+    setSortPass(1);
+    setStack([]);
+    setStackDock(["A", "B", "C"]);
+    setStackPhase("load");
     setTreeStep(0);
     setGraphStep(0);
     setDijkstraStep(0);
@@ -1162,22 +1210,63 @@ function MiniGameWorld({
     miss("Check the middle value first, then keep only the half where 42 can still exist.");
   }
 
-  function swapAt(index: number) {
-    const left = packets[index];
-    const right = packets[index + 1];
-    if (left <= right) {
-      miss(`${left} is already before ${right}. Bubble sort swaps only when left is larger.`);
+  function resolveSort(action: "keep" | "swap") {
+    const left = packets[sortCursor];
+    const right = packets[sortCursor + 1];
+    const shouldSwap = left > right;
+    if ((action === "swap") !== shouldSwap) {
+      miss(
+        shouldSwap
+          ? `${left} is larger than ${right}. Swap this pair so the larger value moves right.`
+          : `${left} is already smaller than ${right}. Keep this pair in place.`,
+      );
       return;
     }
+
     const next = [...packets];
-    next[index] = right;
-    next[index + 1] = left;
+    if (shouldSwap) {
+      next[sortCursor] = right;
+      next[sortCursor + 1] = left;
+    }
     setPackets(next);
-    if (isSorted(next)) {
+
+    const atPassEnd = sortCursor >= next.length - 2;
+    if (atPassEnd && isSorted(next)) {
       completeMiniGame("Sorted. Every neighboring pair is now in ascending order.");
       return;
     }
-    setMessage(`${left} and ${right} swapped. Keep comparing neighbors until the row is sorted.`);
+
+    if (atPassEnd) {
+      setSortCursor(0);
+      setSortPass((current) => current + 1);
+      setMessage(`Pass ${sortPass} complete. Start again from the left; large values have moved right.`);
+      return;
+    }
+
+    setSortCursor((current) => current + 1);
+    setMessage(
+      shouldSwap
+        ? `${left} and ${right} swapped. Move the scanner one pair to the right.`
+        : `${left} and ${right} stayed in order. Move the scanner one pair to the right.`,
+    );
+  }
+
+  function loadStack(value: string) {
+    const expected = stackDock[0];
+    if (value !== expected) {
+      miss(`The loading manifest is A, then B, then C. Load ${expected} next.`);
+      return;
+    }
+    const nextDock = stackDock.slice(1);
+    const nextStack = [...stack, value];
+    setStack(nextStack);
+    setStackDock(nextDock);
+    if (nextDock.length === 0) {
+      setStackPhase("dispatch");
+      setMessage("Loading complete. Now dispatch every crate using stack rules.");
+      return;
+    }
+    setMessage(`${value} pushed onto the stack. Load ${nextDock[0]} next.`);
   }
 
   function popStack(value: string) {
@@ -1291,6 +1380,26 @@ function MiniGameWorld({
     visible: index < dpIndex,
     active: index === dpIndex,
   }));
+  const progressPercent = Math.min(
+    100,
+    world.kind === "binary"
+      ? ((BINARY_VALUES.length - (binaryHigh - binaryLow + 1)) / (BINARY_VALUES.length - 1)) * 100
+      : world.kind === "sort"
+        ? ((sortPass - 1) * (SORT_START.length - 1) + sortCursor) / 12 * 100
+        : world.kind === "stack"
+          ? stackPhase === "load"
+            ? (stack.length / 6) * 100
+            : ((3 + (3 - stack.length)) / 6) * 100
+          : world.kind === "tree"
+            ? (treeStep / TREE_PATH.length) * 100
+            : world.kind === "graph"
+              ? (graphStep / BFS_ORDER.length) * 100
+              : world.kind === "dijkstra"
+                ? (dijkstraStep / DIJKSTRA_STEPS.length) * 100
+                : world.kind === "greedy"
+                  ? (greedyStep / GREEDY_ORDER.length) * 100
+                  : (dpIndex / DP_VALUES.length) * 100,
+  );
 
   return (
     <main className="mini-game-view">
@@ -1299,7 +1408,7 @@ function MiniGameWorld({
           <ArrowLeft size={17} /> Exit
         </button>
         <div>
-          <span>WORLD {world.level}</span>
+          <span>GAME {world.level}</span>
           <strong>{world.title}</strong>
         </div>
         <button type="button" onClick={resetMiniGame}>
@@ -1324,8 +1433,26 @@ function MiniGameWorld({
         </aside>
 
         <div className="mini-game-board">
+          <div className="mini-game-hud">
+            <div>
+              <small>MISSION PROGRESS</small>
+              <strong>{Math.round(progressPercent)}%</strong>
+            </div>
+            <div className="mini-progress-track">
+              <span style={{ width: `${progressPercent}%` }} />
+            </div>
+            <div>
+              <small>MISREADS</small>
+              <strong>{mistakes}</strong>
+            </div>
+          </div>
+
           {world.kind === "binary" && (
             <section className="binary-game" aria-label="Binary search scanner">
+              <div className="scanner-status">
+                <span className="scanner-pulse" />
+                SIGNAL RANGE {binaryLow + 1}-{binaryHigh + 1}
+              </div>
               <div className="binary-strip">
                 {visibleBinary.map(({ value, active, pivot }) => (
                   <span
@@ -1357,30 +1484,67 @@ function MiniGameWorld({
 
           {world.kind === "sort" && (
             <section className="sort-mini-game" aria-label="Bubble sort conveyor">
+              <div className="conveyor-status">
+                <span>PASS {sortPass}</span>
+                <strong>
+                  Compare positions {sortCursor + 1} and {sortCursor + 2}
+                </strong>
+              </div>
               <div className="packet-row">
-                {packets.map((packet) => (
-                  <span className="mini-packet" key={`${packet}-${packets.indexOf(packet)}`}>
+                {packets.map((packet, index) => (
+                  <span
+                    className={[
+                      "mini-packet",
+                      index === sortCursor || index === sortCursor + 1
+                        ? "comparing"
+                        : "",
+                    ].join(" ")}
+                    key={`${packet}-${index}`}
+                  >
                     {packet}
                   </span>
                 ))}
               </div>
-              <div className="mini-actions">
-                {packets.slice(0, -1).map((packet, index) => (
-                  <button type="button" disabled={complete} key={`${packet}-${index}`} onClick={() => swapAt(index)}>
-                    Compare {packet} / {packets[index + 1]}
+              <div className="sort-decision">
+                <p>
+                  Should {packets[sortCursor]} stay before {packets[sortCursor + 1]}?
+                </p>
+                <div className="mini-actions two">
+                  <button type="button" disabled={complete} onClick={() => resolveSort("keep")}>
+                    Keep order
                   </button>
-                ))}
+                  <button type="button" disabled={complete} onClick={() => resolveSort("swap")}>
+                    Swap pair
+                  </button>
+                </div>
               </div>
             </section>
           )}
 
           {world.kind === "stack" && (
             <section className="stack-mini-game" aria-label="Stack cargo elevator">
+              <div className="stack-mission">
+                <strong>{stackPhase === "load" ? "LOAD MANIFEST" : "DISPATCH MODE"}</strong>
+                <span>
+                  {stackPhase === "load"
+                    ? "Push A, B, C into the lift."
+                    : "Remove all cargo using LIFO."}
+                </span>
+              </div>
+              {stackPhase === "load" && (
+                <div className="stack-dock">
+                  {stackDock.map((crate) => (
+                    <button type="button" key={crate} onClick={() => loadStack(crate)}>
+                      Load {crate}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="stack-tower">
                 {stack.map((crate, index) => (
                   <button
                     className={index === stack.length - 1 ? "top" : ""}
-                    disabled={complete}
+                    disabled={complete || stackPhase === "load"}
                     key={crate}
                     onClick={() => popStack(crate)}
                     type="button"
@@ -1388,18 +1552,31 @@ function MiniGameWorld({
                     {crate}
                   </button>
                 ))}
+                {stack.length === 0 && (
+                  <span className="empty-stack">EMPTY LIFT</span>
+                )}
               </div>
-              <p>Click the crate that can legally leave the stack.</p>
+              <p>
+                {stackPhase === "load"
+                  ? "Each loaded crate is pushed onto the top."
+                  : "Only the top crate can leave the elevator."}
+              </p>
             </section>
           )}
 
           {world.kind === "tree" && (
             <section className="tree-mini-game" aria-label="Binary search tree branch finder">
+              <div className="path-chip-row">
+                <span>START 50</span>
+                {treeStep >= 1 && <span>RIGHT 75</span>}
+                {treeStep >= 2 && <span>LEFT 60</span>}
+                {treeStep >= 3 && <span>RIGHT 68</span>}
+              </div>
               <div className="tree-node-map">
-                <span>50</span>
+                <span className={treeStep === 0 ? "current" : "visited"}>50</span>
                 <span>25</span>
-                <span>75</span>
-                <span>60</span>
+                <span className={treeStep === 1 ? "current" : treeStep > 1 ? "visited" : ""}>75</span>
+                <span className={treeStep === 2 ? "current" : treeStep > 2 ? "visited" : ""}>60</span>
                 <span className="target">68</span>
               </div>
               <div className="mini-rule-line">
@@ -1415,7 +1592,12 @@ function MiniGameWorld({
 
           {world.kind === "graph" && (
             <section className="graph-mini-game" aria-label="BFS queue rescue">
-              <div className="graph-node-row">
+              <div className="graph-network">
+                <i className="edge edge-ab" />
+                <i className="edge edge-ac" />
+                <i className="edge edge-bd" />
+                <i className="edge edge-be" />
+                <i className="edge edge-cf" />
                 {graphVisible.map(({ node, done, active }) => (
                   <button
                     className={[done ? "done" : "", active ? "active" : ""].join(" ")}
@@ -1431,11 +1613,20 @@ function MiniGameWorld({
               <div className="queue-strip">
                 Queue front: {BFS_ORDER.slice(graphStep, graphStep + 3).join(" → ") || "empty"}
               </div>
+              <p>Process the glowing queue-front node, then its neighbors join the back.</p>
             </section>
           )}
 
           {world.kind === "dijkstra" && (
             <section className="dijkstra-mini-game" aria-label="Dijkstra route dispatcher">
+              <div className="route-control">
+                <span className="route-origin">START 0</span>
+                <div>
+                  {DIJKSTRA_STEPS.slice(0, dijkstraStep).map((step) => (
+                    <span key={step.correct}>LOCKED {step.correct}</span>
+                  ))}
+                </div>
+              </div>
               <div className="weighted-map">
                 {currentDijkstra.frontier.map((route) => (
                   <button
@@ -1455,6 +1646,11 @@ function MiniGameWorld({
 
           {world.kind === "greedy" && (
             <section className="greedy-mini-game" aria-label="Greedy interval planner">
+              <div className="timeline-scale">
+                {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((tick) => (
+                  <span key={tick}>{tick}</span>
+                ))}
+              </div>
               <div className="interval-row">
                 {GREEDY_INTERVALS.map((interval) => (
                   <button
@@ -1475,6 +1671,12 @@ function MiniGameWorld({
 
           {world.kind === "dp" && (
             <section className="dp-mini-game" aria-label="Dynamic programming memo forge">
+              <div className="memo-equation">
+                <small>BUILD RULE</small>
+                <strong>
+                  fib({dpIndex}) = fib({Math.max(0, dpIndex - 1)}) + fib({Math.max(0, dpIndex - 2)})
+                </strong>
+              </div>
               <div className="memo-row">
                 {dpVisible.map(({ value, visible, active }, index) => (
                   <span className={active ? "active" : ""} key={index}>
@@ -1497,19 +1699,19 @@ function MiniGameWorld({
         {complete && (
           <div className="canvas-complete" role="dialog" aria-label={`${world.title} complete`}>
             <div>
-              <span>WORLD {world.level} CLEAR</span>
-              <h2>Next world unlocked.</h2>
+              <span>GAME {world.level} CLEAR</span>
+              <h2>Next game unlocked.</h2>
               <p>
                 You cleared {world.topics} by playing its core rule, not by
                 memorizing a definition.
               </p>
               <div className="canvas-complete-stats">
-                <strong>WORLD {world.level}</strong>
+                <strong>GAME {world.level}</strong>
                 <strong>{world.gameType}</strong>
                 <strong>UNLOCKED</strong>
               </div>
               <button type="button" onClick={onExit}>
-                Return to world map <ArrowRight size={17} />
+                Return to game library <ArrowRight size={17} />
               </button>
             </div>
           </div>
