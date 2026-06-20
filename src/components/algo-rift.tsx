@@ -10,7 +10,6 @@ import {
   Compass,
   Eye,
   EyeOff,
-  Flame,
   Github,
   Home,
   KeyRound,
@@ -23,14 +22,11 @@ import {
   RotateCcw,
   Save,
   Shield,
-  SlidersHorizontal,
   Sparkles,
-  Target,
   Terminal,
   UserRound,
   Volume2,
   VolumeX,
-  Zap,
 } from "lucide-react";
 import {
   type FormEvent,
@@ -39,14 +35,13 @@ import {
   useRef,
   useState,
 } from "react";
-import { CanvasPlatformer } from "@/components/canvas-platformer";
 import {
   getSupabaseBrowserClient,
   isSupabaseConfigured,
   supabaseConfigurationError,
 } from "@/lib/supabase";
 
-type View = "home" | "battle" | "sort" | "runner" | "world";
+type View = "home" | "game" | "world";
 
 type PlayerProgress = {
   completedLevel: number;
@@ -63,166 +58,142 @@ const DEFAULT_PROGRESS: PlayerProgress = {
 const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/;
 const PASSWORD_PATTERN = /^(?=.*[A-Za-z])(?=.*\d).{10,}$/;
 
-const worlds = [
+type MiniGameKind =
+  | "binary"
+  | "sort"
+  | "stack"
+  | "tree"
+  | "graph"
+  | "dijkstra"
+  | "greedy"
+  | "dp";
+
+const worlds: Array<{
+  level: number;
+  title: string;
+  realm: string;
+  topics: string;
+  color: string;
+  difficulty: "Starter" | "Easy" | "Medium" | "Hard" | "Boss";
+  kind: MiniGameKind;
+  gameType: string;
+  description: string;
+  lesson: string;
+}> = [
   {
     level: 1,
-    title: "Binary Override",
-    realm: "Kernel Frontier",
-    topics: "Binary Search - Physics Tuning - Momentum",
+    title: "Signal Scanner",
+    realm: "Search Lab",
+    topics: "Binary Search",
     color: "sun",
+    difficulty: "Starter",
+    kind: "binary",
+    gameType: "Number Scanner",
     description:
-      "Breach three platforming sectors and narrow a live signal window.",
+      "Find the hidden target by repeatedly cutting a sorted list in half.",
+    lesson:
+      "Binary search compares the middle value, then discards the half that cannot contain the target.",
   },
   {
     level: 2,
-    title: "Sort Circuit",
-    realm: "Packet Foundry",
-    topics: "Bubble Sort - Comparisons - Swaps",
+    title: "Packet Conveyor",
+    realm: "Sorting Bay",
+    topics: "Bubble Sort",
     color: "sky",
-    description: "Reorder hostile packets while the factory keeps moving.",
+    difficulty: "Easy",
+    kind: "sort",
+    gameType: "Conveyor Swap",
+    description: "Swap adjacent packets until every value is in ascending order.",
+    lesson:
+      "Bubble sort repeatedly compares neighbors and swaps only when the left item is larger.",
   },
   {
     level: 3,
-    title: "Stack Breach",
+    title: "Memory Elevator",
     realm: "Memory Vault",
-    topics: "Stacks - Queues - Hash Maps",
+    topics: "Stacks",
     color: "mint",
-    description: "Route processes through a layered security tower.",
+    difficulty: "Easy",
+    kind: "stack",
+    gameType: "LIFO Cargo",
+    description: "Unload memory crates in the only order a stack allows.",
+    lesson:
+      "A stack is last-in, first-out: the newest item is always removed first.",
   },
   {
     level: 4,
-    title: "Tree Runner",
+    title: "Branch Finder",
     realm: "Branch Network",
-    topics: "Trees - BST - Traversal",
+    topics: "Binary Search Trees",
     color: "leaf",
-    description: "Climb a branching world without losing the active route.",
+    difficulty: "Medium",
+    kind: "tree",
+    gameType: "Decision Tree",
+    description: "Navigate left and right branches to locate a target value.",
+    lesson:
+      "A binary search tree sends smaller values left and larger values right at every node.",
   },
   {
     level: 5,
-    title: "Weighted Warden",
-    realm: "Graph Citadel",
-    topics: "BFS - DFS - Dijkstra",
+    title: "Queue Rescue",
+    realm: "Graph Station",
+    topics: "Breadth-First Search",
     color: "violet",
-    description: "Race a network boss through weighted paths.",
+    difficulty: "Medium",
+    kind: "graph",
+    gameType: "Queue Route",
+    description: "Rescue nodes in BFS order by always serving the front of the queue.",
+    lesson:
+      "BFS explores a graph level by level using a queue, so earlier discovered nodes act first.",
   },
   {
     level: 6,
-    title: "Greedy Run",
-    realm: "Bandwidth Dunes",
-    topics: "Greedy - Intervals",
+    title: "Shortest Route",
+    realm: "Weighted Grid",
+    topics: "Dijkstra's Algorithm",
     color: "gold",
-    description: "Commit to local openings while the route collapses.",
+    difficulty: "Hard",
+    kind: "dijkstra",
+    gameType: "Path Dispatcher",
+    description: "Pick the cheapest frontier route until the destination is confirmed.",
+    lesson:
+      "Dijkstra's algorithm repeatedly locks the unvisited node with the lowest known distance.",
   },
   {
     level: 7,
-    title: "Echo Kernel",
+    title: "Interval Planner",
+    realm: "Schedule Arcade",
+    topics: "Greedy Algorithms",
+    color: "gold",
+    difficulty: "Hard",
+    kind: "greedy",
+    gameType: "Schedule Builder",
+    description: "Choose compatible events by taking the earliest finish time.",
+    lesson:
+      "A greedy interval strategy keeps the choice that ends earliest to leave more room for the future.",
+  },
+  {
+    level: 8,
+    title: "Memo Forge",
     realm: "Dynamic Core",
     topics: "Dynamic Programming",
     color: "rose",
-    description: "Cache past states and rebuild a damaged system.",
+    difficulty: "Boss",
+    kind: "dp",
+    gameType: "Cache Builder",
+    description: "Fill a memo table by reusing previous answers instead of recomputing them.",
+    lesson:
+      "Dynamic programming stores subproblem answers and builds larger answers from cached smaller ones.",
   },
 ];
 
 type WorldDefinition = (typeof worlds)[number];
 
-type WorldMechanic = {
-  concept: string;
-  stageGoal: string;
-  terminalTitle: string;
-  terminalRule: string;
-  prompt: string;
-  choices: [string, string, string];
-  correctChoice: number;
-  wrongHint: string;
-  success: string;
-  gateLabel: string;
-  pickupLabel: string;
-  enemyLabel: string;
-};
-
-const worldMechanics: Record<number, WorldMechanic> = {
-  3: {
-    concept: "Stack",
-    stageGoal: "Climb the memory tower and open the elevator gate.",
-    terminalTitle: "Stack Console",
-    terminalRule:
-      "A stack is last-in, first-out. The newest block must leave first.",
-    prompt: "Blocks entered as A, B, C. Which block pops first?",
-    choices: ["A, the oldest block", "B, the middle block", "C, the newest block"],
-    correctChoice: 2,
-    wrongHint: "Stack gates pop from the top. Choose the most recent block.",
-    success: "Correct. C leaves first, so the elevator stack unlocks.",
-    gateLabel: "LIFO",
-    pickupLabel: "PUSH",
-    enemyLabel: "LEAK",
-  },
-  4: {
-    concept: "Binary Search Tree",
-    stageGoal: "Follow the branch bridges without losing the active route.",
-    terminalTitle: "Branch Router",
-    terminalRule:
-      "In a BST, smaller values go left and larger values go right.",
-    prompt: "You stand on node 50. Target 72 is incoming. Which bridge opens?",
-    choices: ["Left branch", "Right branch", "Restart at root"],
-    correctChoice: 1,
-    wrongHint: "72 is larger than 50, so the route moves to the right branch.",
-    success: "Right branch locked. The tree bridge grows forward.",
-    gateLabel: "BST",
-    pickupLabel: "NODE",
-    enemyLabel: "NULL",
-  },
-  5: {
-    concept: "Dijkstra",
-    stageGoal: "Cross the weighted citadel by choosing the lowest total cost.",
-    terminalTitle: "Path Cost Gate",
-    terminalRule:
-      "Dijkstra expands the currently cheapest known path first.",
-    prompt: "Routes to the gate cost 9, 4, and 7. Which path gets explored next?",
-    choices: ["Cost 9", "Cost 4", "Cost 7"],
-    correctChoice: 1,
-    wrongHint: "Dijkstra is greedy about total distance: pick the smallest cost.",
-    success: "Shortest route confirmed. The heavy gate drops.",
-    gateLabel: "MIN",
-    pickupLabel: "DIST",
-    enemyLabel: "WEIGHT",
-  },
-  6: {
-    concept: "Greedy Choice",
-    stageGoal: "Sprint through collapsing platforms by choosing the best local move.",
-    terminalTitle: "Interval Switch",
-    terminalRule:
-      "A greedy interval strategy often keeps the option that finishes earliest.",
-    prompt: "Three safe platforms end at 12, 8, and 15. Which keeps the route open?",
-    choices: ["End at 12", "End at 8", "End at 15"],
-    correctChoice: 1,
-    wrongHint: "Choose the earliest finish so the most future platforms remain possible.",
-    success: "Earliest finish selected. The next bridge appears.",
-    gateLabel: "FAST",
-    pickupLabel: "LOCAL",
-    enemyLabel: "DELAY",
-  },
-  7: {
-    concept: "Dynamic Programming",
-    stageGoal: "Power the final gate by reusing cached subproblems.",
-    terminalTitle: "Memo Core",
-    terminalRule:
-      "Dynamic programming stores answers so repeated subproblems are not solved again.",
-    prompt: "fib(6) needs fib(5) and fib(4). fib(4) is already cached. What should you do?",
-    choices: ["Recompute fib(4)", "Use the cached fib(4)", "Delete the cache"],
-    correctChoice: 1,
-    wrongHint: "DP saves time by reusing the cache when a subproblem repeats.",
-    success: "Cache reused. The final kernel gate opens.",
-    gateLabel: "MEMO",
-    pickupLabel: "CACHE",
-    enemyLabel: "REPEAT",
-  },
-};
-
 function normalizeProgress(value: Partial<PlayerProgress> | null | undefined) {
   return {
     completedLevel: Math.max(
       0,
-      Math.min(7, Number(value?.completedLevel) || 0),
+      Math.min(worlds.length, Number(value?.completedLevel) || 0),
     ),
     xp: Math.max(0, Math.min(1_000_000, Number(value?.xp) || 0)),
     redlineVisionUnlocked: Boolean(value?.redlineVisionUnlocked),
@@ -282,51 +253,6 @@ function BrandMark() {
   );
 }
 
-function PlayerSprite({ powered = false }: { powered?: boolean }) {
-  return (
-    <div
-      className={`player-sprite ${powered ? "sprite-powered" : ""}`}
-      aria-hidden="true"
-    >
-      <div className="runner-scarf"><span /></div>
-      <div className="runner-hair" />
-      <div className="runner-head">
-        <span className="runner-ear" />
-        <span className="runner-eye runner-eye-left" />
-        <span className="runner-eye runner-eye-right" />
-        <span className="runner-nose" />
-        <span className="runner-smile" />
-      </div>
-      <div className="runner-torso">
-        <span className="runner-emblem">A</span>
-      </div>
-      <div className="runner-arm runner-arm-left"><span className="runner-hand" /></div>
-      <div className="runner-arm runner-arm-right"><span className="runner-hand" /></div>
-      <div className="runner-leg runner-leg-left"><span className="runner-boot" /></div>
-      <div className="runner-leg runner-leg-right"><span className="runner-boot" /></div>
-    </div>
-  );
-}
-
-function BossSprite() {
-  return (
-    <div className="boss-sprite" aria-hidden="true">
-      <div className="boss-crown"><span /><span /><span /></div>
-      <div className="boss-horn boss-horn-left" />
-      <div className="boss-horn boss-horn-right" />
-      <div className="boss-face">
-        <span className="boss-eye boss-eye-left" />
-        <span className="boss-eye boss-eye-right" />
-        <span className="boss-mouth" />
-      </div>
-      <div className="boss-hand boss-hand-left" />
-      <div className="boss-hand boss-hand-right" />
-      <div className="boss-glitch glitch-one" />
-      <div className="boss-glitch glitch-two" />
-    </div>
-  );
-}
-
 export function AlgoRift() {
   const [view, setView] = useState<View>("home");
   const [progress, setProgress] = useState(DEFAULT_PROGRESS);
@@ -348,7 +274,7 @@ export function AlgoRift() {
   const [authError, setAuthError] = useState("");
   const [user, setUser] = useState<User | null>(null);
   const [username, setUsername] = useState("");
-  const [selectedWorldLevel, setSelectedWorldLevel] = useState(3);
+  const [selectedWorldLevel, setSelectedWorldLevel] = useState(1);
   const [cloudHydrated, setCloudHydrated] = useState(false);
   const [cloudStatus, setCloudStatus] = useState<
     "local" | "loading" | "saving" | "saved" | "error"
@@ -521,12 +447,13 @@ export function AlgoRift() {
   const displayLevel = Math.max(1, Math.min(worlds.length, progress.completedLevel + 1));
   const nextPlayableWorld = Math.min(worlds.length, progress.completedLevel + 1);
   const nextWorld = worlds[nextPlayableWorld - 1] ?? worlds[0];
-  const selectedWorld = worlds.find((world) => world.level === selectedWorldLevel) ?? worlds[2];
+  const selectedWorld =
+    worlds.find((world) => world.level === selectedWorldLevel) ?? worlds[0];
   const nextMission = {
     label: `${nextWorld.level}-1`,
-    title: nextWorld.level === 1 ? "Boot Sequence" : nextWorld.title,
+    title: nextWorld.title,
     topics: nextWorld.topics,
-    reward: nextWorld.level === 1 ? "+250 XP" : `+${180 + nextWorld.level * 60} XP`,
+    reward: `+${220 + nextWorld.level * 60} XP`,
   };
 
   function changeView(nextView: View) {
@@ -548,16 +475,8 @@ export function AlgoRift() {
 
   function startWorld(level: number) {
     if (level > progress.completedLevel + 1) return;
-    if (level === 1) {
-      changeView("battle");
-      return;
-    }
-    if (level === 2 && progress.completedLevel >= 1) {
-      changeView("sort");
-      return;
-    }
     setSelectedWorldLevel(level);
-    changeView("runner");
+    changeView("game");
   }
 
   const handleGameComplete = useCallback(
@@ -799,15 +718,16 @@ export function AlgoRift() {
 
             <div className="hero-content">
               <span className="quest-label">
-                <Terminal size={15} /> WORLD 1 SYSTEM ONLINE
+                <Terminal size={15} /> MINI-GAME ACADEMY ONLINE
               </span>
               <h1>
-                Run the world.
-                <span>Rewrite the system.</span>
+                Learn algorithms.
+                <span>Play the idea.</span>
               </h1>
               <p>
-                A momentum platformer where algorithm traces and live physics
-                overrides are part of the level, not a quiz beside it.
+                A collection of focused algorithm mini-games, ordered from
+                beginner-friendly search puzzles to dynamic programming boss
+                challenges.
               </p>
               <div className="hero-buttons">
                 <button
@@ -839,20 +759,21 @@ export function AlgoRift() {
               </div>
             </div>
 
-            <div className="hero-scene" aria-label="AlgoRift game preview">
-              <div className="speech-bubble">
-                <strong>ROOT GUARD</strong>
-                <span>ACCESS DENIED</span>
+            <div className="hero-scene mini-game-preview" aria-label="AlgoRift game preview">
+              <div className="mini-preview-card preview-search">
+                <small>BINARY SEARCH</small>
+                <strong>LOW MID HIGH</strong>
+                <span>Cut the range</span>
               </div>
-              <div className="hero-player"><PlayerSprite powered /></div>
-              <div className="hero-power-core" aria-hidden="true">
-                <span /><Flame size={20} />
+              <div className="mini-preview-card preview-sort">
+                <small>SORTING</small>
+                <strong>6 3 8 1</strong>
+                <span>Swap neighbors</span>
               </div>
-              <div className="hero-boss"><BossSprite /></div>
-              <div className="floating-coin coin-one">0.20x</div>
-              <div className="floating-coin coin-two">O(log n)</div>
-              <div className="ground-platform">
-                <span /><span /><span /><span /><span />
+              <div className="mini-preview-card preview-graph">
+                <small>GRAPHS</small>
+                <strong>A → C → F</strong>
+                <span>Pick the route</span>
               </div>
             </div>
           </section>
@@ -860,33 +781,33 @@ export function AlgoRift() {
           <section className="how-it-works">
             <div className="simple-heading">
               <span>CORE GAME LOOP</span>
-              <h2>Platforming first. Systems underneath.</h2>
+              <h2>One concept. One small game. One clear win condition.</h2>
             </div>
             <div className="steps-row">
               <article>
-                <span className="step-icon"><Zap size={22} /></span>
+                <span className="step-icon"><Sparkles size={22} /></span>
                 <div>
-                  <small>MOVE</small>
-                  <h3>Build momentum</h3>
-                  <p>Acceleration, friction, variable jumps, and faster falls.</p>
+                  <small>PLAY</small>
+                  <h3>Interact with the rule</h3>
+                  <p>Every algorithm becomes a specific move you control.</p>
                 </div>
               </article>
               <ArrowRight className="step-arrow" />
               <article>
-                <span className="step-icon"><SlidersHorizontal size={22} /></span>
+                <span className="step-icon"><Terminal size={22} /></span>
                 <div>
-                  <small>OVERRIDE</small>
-                  <h3>Tune the engine</h3>
-                  <p>Drop time to 20% and patch live physics parameters.</p>
+                  <small>UNDERSTAND</small>
+                  <h3>Get feedback instantly</h3>
+                  <p>Wrong moves explain the concept without stopping the flow.</p>
                 </div>
               </article>
               <ArrowRight className="step-arrow" />
               <article>
-                <span className="step-icon"><Target size={22} /></span>
+                <span className="step-icon"><Check size={22} /></span>
                 <div>
-                  <small>BREACH</small>
-                  <h3>Open algorithm gates</h3>
-                  <p>Use the rule built into the obstacle, then keep running.</p>
+                  <small>MASTER</small>
+                  <h3>Clear the next concept</h3>
+                  <p>Progress from easier patterns toward harder algorithm design.</p>
                 </div>
               </article>
             </div>
@@ -895,61 +816,35 @@ export function AlgoRift() {
           <section className="learning-strip" ref={learningGuide}>
             <div className="simple-heading">
               <span>WHAT YOU LEARN</span>
-              <h2>Algorithms are the powers, locks, and circuits.</h2>
+              <h2>Algorithms become different mini-games.</h2>
               <p>
-                Each world turns a data-structure or algorithm rule into a
-                gate, bridge, route, or power-up inside a side-scrolling stage.
+                Search feels like scanning. Sorting feels like fixing a
+                conveyor. Stacks feel like cargo rules. Graphs feel like route
+                planning. DP feels like building a cache.
               </p>
             </div>
             <div className="learning-cards">
               <article>
                 <small>WORLD 1</small>
-                <h3>Binary Search</h3>
+                <h3>Signal Scanner</h3>
                 <p>
-                  Terminals ask you to compare the midpoint and discard the
-                  impossible half of a sorted signal.
+                  Narrow a sorted signal by choosing left, right, or found.
                 </p>
               </article>
               <article>
                 <small>WORLD 2</small>
-                <h3>Bubble Sort</h3>
+                <h3>Packet Conveyor</h3>
                 <p>
-                  Packet gates teach adjacent comparisons: swap when left is
-                  greater than right, repeat until sorted.
+                  Compare neighboring cards and swap only when needed.
                 </p>
               </article>
               <article>
-                <small>WORLDS 3-7</small>
+                <small>WORLDS 3-8</small>
                 <h3>Stacks, Trees, Graphs, Greedy, DP</h3>
                 <p>
-                  Later stages use LIFO memory, branch choices, shortest paths,
-                  local decisions, and memoized states to open the route.
+                  Each later concept gets its own board, choices, and feedback.
                 </p>
               </article>
-            </div>
-          </section>
-
-          <section className="power-feature">
-            <div className="power-feature-art" aria-hidden="true">
-              <div className="power-orbit orbit-one" />
-              <div className="power-orbit orbit-two" />
-              <div className="power-core-large"><span /><Flame size={34} /></div>
-              <div className="power-preview-player"><PlayerSprite powered /></div>
-              <div className="power-preview-beam"><i /><i /></div>
-            </div>
-            <div className="power-feature-copy">
-              <span className="section-label">
-                <Flame size={15} /> Redline kernel
-              </span>
-              <h2>One beam. Every target in the lane.</h2>
-              <p>
-                Install Redline inside the first sector, then pierce groups of
-                bugs and break the final Root Guard.
-              </p>
-              <div className="power-rule">
-                <Shield size={18} />
-                <span>Original procedural visuals and audio. No borrowed game assets.</span>
-              </div>
             </div>
           </section>
 
@@ -987,24 +882,8 @@ export function AlgoRift() {
         </main>
       )}
 
-      {view === "battle" && (
-        <CanvasPlatformer
-          playerName={username || "NOVA"}
-          soundOn={soundOn}
-          onComplete={handleGameComplete}
-          onExit={() => changeView("world")}
-        />
-      )}
-
-      {view === "sort" && (
-        <SortCircuit
-          onComplete={handleGameComplete}
-          onExit={() => changeView("world")}
-        />
-      )}
-
-      {view === "runner" && (
-        <AlgorithmRunnerWorld
+      {view === "game" && (
+        <MiniGameWorld
           world={selectedWorld}
           onComplete={handleGameComplete}
           onExit={() => changeView("world")}
@@ -1018,8 +897,8 @@ export function AlgoRift() {
               <span className="section-label"><Map size={15} /> World map</span>
               <h1>AlgoRift campaign</h1>
               <p>
-                Run left to right, dodge hazards, and use algorithm terminals
-                to open gates inside each stage.
+                Pick the next unlocked algorithm mini-game. Each one has its
+                own board, rule, and way to win.
               </p>
             </div>
             <div className="world-summary">
@@ -1066,6 +945,9 @@ export function AlgoRift() {
                     <small>{world.realm}</small>
                     <h2>{world.title}</h2>
                     <strong>{world.topics}</strong>
+                    <span className="mini-game-type">
+                      {world.difficulty} · {world.gameType}
+                    </span>
                     <p>{world.description}</p>
                     {playable ? (
                       <button type="button" onClick={() => startWorld(world.level)}>
@@ -1137,13 +1019,13 @@ export function AlgoRift() {
         </main>
       )}
 
-      {view !== "battle" && (
+      {view !== "game" && (
         <footer className="game-footer">
           <div className="footer-brand">
             <BrandMark />
             <div>
               <strong>AlgoRift</strong>
-              <span>Algorithms built into the game system.</span>
+              <span>Algorithms taught through focused mini-games.</span>
             </div>
           </div>
           <p className="creator-mark">
@@ -1170,200 +1052,249 @@ export function AlgoRift() {
   );
 }
 
-type SortCircuitProps = {
-  onExit: () => void;
-  onComplete: (payload: PlayerProgress) => void;
-};
-
-const SORT_START = [6, 3, 8, 1, 5];
-
-function isSorted(values: number[]) {
-  return values.every((value, index) => index === 0 || values[index - 1] <= value);
-}
-
-function SortCircuit({ onExit, onComplete }: SortCircuitProps) {
-  const [packets, setPackets] = useState(SORT_START);
-  const [moves, setMoves] = useState(0);
-  const [errors, setErrors] = useState(0);
-  const [message, setMessage] = useState(
-    "Compare neighbors. Swap only when the left packet is larger.",
-  );
-  const [complete, setComplete] = useState(false);
-
-  function resetSort() {
-    setPackets(SORT_START);
-    setMoves(0);
-    setErrors(0);
-    setComplete(false);
-    setMessage("Compare neighbors. Swap only when the left packet is larger.");
-  }
-
-  function swapAt(index: number) {
-    if (complete) return;
-    const left = packets[index];
-    const right = packets[index + 1];
-
-    if (left <= right) {
-      setErrors((current) => current + 1);
-      setMessage(
-        `${left} is already before ${right}. Bubble Sort leaves ordered neighbors alone.`,
-      );
-      return;
-    }
-
-    const next = [...packets];
-    next[index] = right;
-    next[index + 1] = left;
-    const solved = isSorted(next);
-    setPackets(next);
-    setMoves((current) => current + 1);
-    setMessage(
-      solved
-        ? "Sorted. Every neighbor pair is now in ascending order."
-        : `${left} was larger than ${right}, so the packets swapped.`,
-    );
-
-    if (solved) {
-      setComplete(true);
-      onComplete({
-        completedLevel: 2,
-        xp: 430,
-        redlineVisionUnlocked: true,
-      });
-    }
-  }
-
-  return (
-    <main className="sort-circuit-view">
-      <header className="canvas-game-toolbar">
-        <button type="button" onClick={onExit}>
-          <ArrowLeft size={17} /> Exit
-        </button>
-        <div>
-          <span>WORLD 2</span>
-          <strong>Sort Circuit</strong>
-        </div>
-        <button type="button" onClick={resetSort}>
-          <RotateCcw size={16} /> Restart
-        </button>
-      </header>
-
-      <section className="sort-circuit-shell">
-        <div className="sort-briefing">
-          <span>ALGORITHM COACH</span>
-          <h1>Bubble Sort is compare, then swap.</h1>
-          <p>
-            Work left to right. If two neighbors are backwards, swap them. The
-            largest values drift toward the end of the array like packets moving
-            down a circuit belt.
-          </p>
-        </div>
-
-        <div className="sort-board" aria-label="Bubble sort packet board">
-          <div className="sort-track">
-            {packets.map((packet, index) => (
-              <div className="packet-stack" key={`${packet}-${index}`}>
-                <div className="packet-card">
-                  <small>PACKET</small>
-                  <strong>{packet}</strong>
-                </div>
-                {index < packets.length - 1 && (
-                  <button type="button" onClick={() => swapAt(index)}>
-                    compare {packet} / {packets[index + 1]}
-                    <span>SWAP IF LEFT &gt; RIGHT</span>
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <aside className="sort-console">
-          <div>
-            <span>LIVE RULE</span>
-            <strong>if left &gt; right: swap()</strong>
-            <p>{message}</p>
-          </div>
-          <div className="sort-stats">
-            <span>{moves} swaps</span>
-            <span>{errors} misreads</span>
-            <span>{complete ? "sorted" : "in progress"}</span>
-          </div>
-        </aside>
-
-        {complete && (
-          <div className="canvas-complete" role="dialog" aria-label="Sort Circuit complete">
-            <div>
-              <span>SORT CIRCUIT CLEAR</span>
-              <h2>World 2 unlocked and completed.</h2>
-              <p>
-                You used adjacent comparisons to turn an unsorted array into an
-                ascending one.
-              </p>
-              <div className="canvas-complete-stats">
-                <strong>+180 XP</strong>
-                <strong>{moves} SWAPS</strong>
-                <strong>WORLD 2</strong>
-              </div>
-              <button type="button" onClick={onExit}>
-                Return to world map <ArrowRight size={17} />
-              </button>
-            </div>
-          </div>
-        )}
-      </section>
-    </main>
-  );
-}
-
-type AlgorithmRunnerWorldProps = {
+type MiniGameWorldProps = {
   world: WorldDefinition;
   onExit: () => void;
   onComplete: (payload: PlayerProgress) => void;
 };
 
-function AlgorithmRunnerWorld({
+const BINARY_VALUES = [3, 8, 12, 17, 23, 31, 42];
+const SORT_START = [6, 3, 8, 1, 5];
+const TREE_PATH = [
+  { node: 50, correct: "right", hint: "68 is larger than 50, so move right." },
+  { node: 75, correct: "left", hint: "68 is smaller than 75, so move left." },
+  { node: 60, correct: "right", hint: "68 is larger than 60, so move right." },
+] as const;
+const BFS_ORDER = ["A", "B", "C", "D", "E", "F"];
+const DIJKSTRA_STEPS = [
+  { frontier: ["B:4", "C:2", "D:8"], correct: "C" },
+  { frontier: ["B:4", "E:5", "D:8"], correct: "B" },
+  { frontier: ["E:5", "D:7", "F:11"], correct: "E" },
+  { frontier: ["D:7", "F:9"], correct: "D" },
+] as const;
+const GREEDY_INTERVALS = [
+  { id: "B", label: "B 1-3", finish: 3 },
+  { id: "A", label: "A 0-5", finish: 5 },
+  { id: "D", label: "D 3-5", finish: 5 },
+  { id: "C", label: "C 4-7", finish: 7 },
+  { id: "E", label: "E 5-8", finish: 8 },
+] as const;
+const GREEDY_ORDER = ["B", "D", "E"];
+const DP_VALUES = [0, 1, 1, 2, 3, 5];
+
+function isSorted(values: number[]) {
+  return values.every((value, index) => index === 0 || values[index - 1] <= value);
+}
+
+function MiniGameWorld({
   world,
   onExit,
   onComplete,
-}: AlgorithmRunnerWorldProps) {
-  const mechanic = worldMechanics[world.level];
-  const [phase, setPhase] = useState<"run" | "hack" | "clear">("run");
-  const [feedback, setFeedback] = useState(
-    "Run to the terminal. It controls the next gate in the stage.",
-  );
+}: MiniGameWorldProps) {
+  const [binaryLow, setBinaryLow] = useState(0);
+  const [binaryHigh, setBinaryHigh] = useState(BINARY_VALUES.length - 1);
+  const [packets, setPackets] = useState(SORT_START);
+  const [stack, setStack] = useState(["A", "B", "C"]);
+  const [treeStep, setTreeStep] = useState(0);
+  const [graphStep, setGraphStep] = useState(0);
+  const [dijkstraStep, setDijkstraStep] = useState(0);
+  const [greedyStep, setGreedyStep] = useState(0);
+  const [greedySelected, setGreedySelected] = useState<string[]>([]);
+  const [dpIndex, setDpIndex] = useState(2);
+  const [message, setMessage] = useState(world.lesson);
   const [mistakes, setMistakes] = useState(0);
   const [complete, setComplete] = useState(false);
-  const runnerProgress = phase === "run" ? 12 : phase === "hack" ? 43 : 74;
 
-  function choose(index: number) {
+  useEffect(() => {
+    resetMiniGame();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [world.level]);
+
+  function completeMiniGame(detail: string) {
     if (complete) return;
-    if (index !== mechanic.correctChoice) {
-      setMistakes((current) => current + 1);
-      setFeedback(mechanic.wrongHint);
-      return;
-    }
-
-    setFeedback(mechanic.success);
-    setPhase("clear");
+    setMessage(detail);
     setComplete(true);
     onComplete({
       completedLevel: world.level,
-      xp: Math.max(250, 180 + world.level * 120),
+      xp: 220 + world.level * 60,
       redlineVisionUnlocked: true,
     });
   }
 
-  function resetStage() {
-    setPhase("run");
-    setFeedback("Run to the terminal. It controls the next gate in the stage.");
+  function miss(hint: string) {
+    setMistakes((current) => current + 1);
+    setMessage(hint);
+  }
+
+  function resetMiniGame() {
+    setBinaryLow(0);
+    setBinaryHigh(BINARY_VALUES.length - 1);
+    setPackets(SORT_START);
+    setStack(["A", "B", "C"]);
+    setTreeStep(0);
+    setGraphStep(0);
+    setDijkstraStep(0);
+    setGreedyStep(0);
+    setGreedySelected([]);
+    setDpIndex(2);
+    setMessage(world.lesson);
     setMistakes(0);
     setComplete(false);
   }
 
+  function chooseBinary(action: "left" | "right" | "found") {
+    const pivotIndex = Math.floor((binaryLow + binaryHigh) / 2);
+    const pivot = BINARY_VALUES[pivotIndex];
+    if (action === "found" && pivot === 42) {
+      completeMiniGame("Target found. Binary search ended after cutting the range down to one value.");
+      return;
+    }
+    if (pivot < 42 && action === "right") {
+      setBinaryLow(pivotIndex + 1);
+      setMessage(`${pivot} is too small, so the left half is impossible. Keep the right half.`);
+      return;
+    }
+    if (pivot > 42 && action === "left") {
+      setBinaryHigh(pivotIndex - 1);
+      setMessage(`${pivot} is too large, so the right half is impossible. Keep the left half.`);
+      return;
+    }
+    miss("Check the middle value first, then keep only the half where 42 can still exist.");
+  }
+
+  function swapAt(index: number) {
+    const left = packets[index];
+    const right = packets[index + 1];
+    if (left <= right) {
+      miss(`${left} is already before ${right}. Bubble sort swaps only when left is larger.`);
+      return;
+    }
+    const next = [...packets];
+    next[index] = right;
+    next[index + 1] = left;
+    setPackets(next);
+    if (isSorted(next)) {
+      completeMiniGame("Sorted. Every neighboring pair is now in ascending order.");
+      return;
+    }
+    setMessage(`${left} and ${right} swapped. Keep comparing neighbors until the row is sorted.`);
+  }
+
+  function popStack(value: string) {
+    const top = stack[stack.length - 1];
+    if (value !== top) {
+      miss(`Stacks only remove the newest item. The current top is ${top}.`);
+      return;
+    }
+    const next = stack.slice(0, -1);
+    setStack(next);
+    if (next.length === 0) {
+      completeMiniGame("Stack cleared in C, B, A order. That is last-in, first-out.");
+      return;
+    }
+    setMessage(`${value} popped from the top. The next removable crate is ${next[next.length - 1]}.`);
+  }
+
+  function chooseTree(direction: "left" | "right") {
+    const step = TREE_PATH[treeStep];
+    if (direction !== step.correct) {
+      miss(step.hint);
+      return;
+    }
+    const nextStep = treeStep + 1;
+    setTreeStep(nextStep);
+    if (nextStep >= TREE_PATH.length) {
+      completeMiniGame("Route found: 50 → 75 → 60 → 68. BST comparisons guided every branch.");
+      return;
+    }
+    setMessage(`Correct branch. Now compare 68 with ${TREE_PATH[nextStep].node}.`);
+  }
+
+  function chooseGraph(node: string) {
+    const expected = BFS_ORDER[graphStep];
+    if (node !== expected) {
+      miss(`BFS uses a queue. Serve ${expected} before later discovered nodes.`);
+      return;
+    }
+    const nextStep = graphStep + 1;
+    setGraphStep(nextStep);
+    if (nextStep >= BFS_ORDER.length) {
+      completeMiniGame("All nodes rescued in BFS order. Queue discipline kept the search level by level.");
+      return;
+    }
+    setMessage(`${node} processed. The next queue front is ${BFS_ORDER[nextStep]}.`);
+  }
+
+  function chooseDijkstra(node: string) {
+    const step = DIJKSTRA_STEPS[dijkstraStep];
+    if (node !== step.correct) {
+      miss("Dijkstra locks the unvisited node with the smallest known distance.");
+      return;
+    }
+    const nextStep = dijkstraStep + 1;
+    setDijkstraStep(nextStep);
+    if (nextStep >= DIJKSTRA_STEPS.length) {
+      completeMiniGame("Shortest route confirmed. The lowest-distance frontier won every round.");
+      return;
+    }
+    setMessage(`${node} locked. Re-check the frontier and choose the next cheapest distance.`);
+  }
+
+  function chooseGreedy(intervalId: string) {
+    const expected = GREEDY_ORDER[greedyStep];
+    if (intervalId !== expected) {
+      miss("For this interval strategy, choose the compatible event that finishes earliest.");
+      return;
+    }
+    const nextSelected = [...greedySelected, intervalId];
+    const nextStep = greedyStep + 1;
+    setGreedySelected(nextSelected);
+    setGreedyStep(nextStep);
+    if (nextStep >= GREEDY_ORDER.length) {
+      completeMiniGame("Schedule complete. Earliest finishing choices left room for the most events.");
+      return;
+    }
+    setMessage(`${intervalId} selected. Now pick the next compatible interval with the earliest finish.`);
+  }
+
+  function chooseDp(value: number) {
+    const expected = DP_VALUES[dpIndex];
+    if (value !== expected) {
+      miss(`Use the cached cells: fib(${dpIndex}) = fib(${dpIndex - 1}) + fib(${dpIndex - 2}).`);
+      return;
+    }
+    const nextIndex = dpIndex + 1;
+    setDpIndex(nextIndex);
+    if (nextIndex >= DP_VALUES.length) {
+      completeMiniGame("Memo table complete. Each new value reused the two cached answers before it.");
+      return;
+    }
+    setMessage(`fib(${dpIndex}) cached as ${value}. Build the next cell from the cache.`);
+  }
+
+  const pivotIndex = Math.floor((binaryLow + binaryHigh) / 2);
+  const pivotValue = BINARY_VALUES[pivotIndex];
+  const visibleBinary = BINARY_VALUES.map((value, index) => ({
+    value,
+    active: index >= binaryLow && index <= binaryHigh,
+    pivot: index === pivotIndex,
+  }));
+  const currentTreeNode = TREE_PATH[treeStep]?.node ?? 68;
+  const graphVisible = BFS_ORDER.map((node, index) => ({
+    node,
+    done: index < graphStep,
+    active: index === graphStep,
+  }));
+  const currentDijkstra = DIJKSTRA_STEPS[dijkstraStep] ?? DIJKSTRA_STEPS[DIJKSTRA_STEPS.length - 1];
+  const dpVisible = DP_VALUES.map((value, index) => ({
+    value,
+    visible: index < dpIndex,
+    active: index === dpIndex,
+  }));
+
   return (
-    <main className="algorithm-runner-view">
-      <header className="canvas-game-toolbar">
+    <main className="mini-game-view">
+      <header className="mini-game-toolbar">
         <button type="button" onClick={onExit}>
           <ArrowLeft size={17} /> Exit
         </button>
@@ -1371,117 +1302,197 @@ function AlgorithmRunnerWorld({
           <span>WORLD {world.level}</span>
           <strong>{world.title}</strong>
         </div>
-        <button type="button" onClick={resetStage}>
+        <button type="button" onClick={resetMiniGame}>
           <RotateCcw size={16} /> Restart
         </button>
       </header>
 
-      <section className={`algorithm-runner-shell world-${world.color}`}>
-        <div className="runner-stage" aria-label={`${world.title} platform stage preview`}>
-          <div className="runner-cloud runner-cloud-one" />
-          <div className="runner-cloud runner-cloud-two" />
-          <div className="runner-hill runner-hill-one" />
-          <div className="runner-hill runner-hill-two" />
-          <div className="runner-ground" />
-          <div className="runner-track-line" />
-
-          {[14, 31, 58].map((left, index) => (
-            <div
-              className={`runner-platform platform-${index + 1}`}
-              key={left}
-              style={{ left: `${left}%` }}
-            />
-          ))}
-
-          {[22, 52, 68].map((left, index) => (
-            <div
-              className="runner-pickup"
-              key={left}
-              style={{ left: `${left}%` }}
-            >
-              <Sparkles size={13} />
-              <span>{index === 1 ? mechanic.pickupLabel : "+1"}</span>
-            </div>
-          ))}
-
-          {[27, 64].map((left) => (
-            <div className="runner-stage-enemy" key={left} style={{ left: `${left}%` }}>
-              <span>{mechanic.enemyLabel}</span>
-            </div>
-          ))}
-
-          <div
-            className="runner-stage-player"
-            style={{ left: `${runnerProgress}%` }}
-            aria-hidden="true"
-          >
-            <PlayerSprite powered={complete} />
-          </div>
-
-          <button
-            type="button"
-            className={`runner-stage-terminal ${phase !== "run" ? "active" : ""}`}
-            onClick={() => {
-              if (phase === "run") {
-                setPhase("hack");
-                setFeedback("Terminal connected. Pick the move that matches the rule.");
-              }
-            }}
-          >
-            <Terminal size={24} />
-            <span>{mechanic.concept}</span>
-            <small>PRESS</small>
-          </button>
-
-          <div className={complete ? "runner-stage-gate open" : "runner-stage-gate"}>
-            <LockKeyhole size={28} />
-            <span>{mechanic.gateLabel}</span>
-          </div>
-          <div className="runner-stage-flag">FINISH</div>
-          <div className="runner-stage-sign">
-            <strong>{mechanic.concept}</strong>
-            <span>{mechanic.stageGoal}</span>
-          </div>
-        </div>
-
-        <aside className="runner-hack-panel">
-          <span>WORLD {world.level} PLATFORM SYSTEM</span>
+      <section className={`mini-game-shell world-${world.color}`}>
+        <aside className="mini-game-brief">
+          <span>{world.difficulty} · {world.gameType}</span>
           <h1>{world.title}</h1>
           <strong>{world.topics}</strong>
-          <p>{mechanic.stageGoal}</p>
-          <div className="runner-live-rule">
-            <small>{mechanic.terminalTitle}</small>
-            <p>{mechanic.terminalRule}</p>
+          <p>{world.description}</p>
+          <div className="mini-lesson-card">
+            <small>WHAT THIS TEACHES</small>
+            <p>{world.lesson}</p>
           </div>
-          <div className="runner-terminal-card">
-            <small>GATE PUZZLE</small>
-            <p>{mechanic.prompt}</p>
-            <div className="runner-choice-grid">
-              {mechanic.choices.map((choice, index) => (
-                <button
-                  type="button"
-                  key={choice}
-                  disabled={phase === "run" || complete}
-                  onClick={() => choose(index)}
-                >
-                  {choice}
-                </button>
-              ))}
-            </div>
+          <div className={mistakes > 0 ? "mini-feedback warn" : "mini-feedback"}>
+            <small>{complete ? "CLEARED" : "LIVE FEEDBACK"}</small>
+            <p>{message}</p>
           </div>
-          {phase === "run" && (
-            <button type="button" onClick={() => setPhase("hack")}>
-              Reach terminal <ArrowRight size={17} />
-            </button>
-          )}
-          <p className={mistakes > 0 ? "runner-feedback warn" : "runner-feedback"}>
-            {feedback}
-          </p>
-          <small>
-            The algorithm is the key. You still run, jump, and dodge like a
-            platformer, but gates only open when the system rule is used.
-          </small>
         </aside>
+
+        <div className="mini-game-board">
+          {world.kind === "binary" && (
+            <section className="binary-game" aria-label="Binary search scanner">
+              <div className="binary-strip">
+                {visibleBinary.map(({ value, active, pivot }) => (
+                  <span
+                    className={[active ? "active" : "", pivot ? "pivot" : ""].join(" ")}
+                    key={value}
+                  >
+                    <small>{pivot ? "MID" : active ? "OPEN" : "CUT"}</small>
+                    {value}
+                  </span>
+                ))}
+              </div>
+              <div className="mini-rule-line">
+                <strong>Target 42</strong>
+                <span>Current middle is {pivotValue}</span>
+              </div>
+              <div className="mini-actions three">
+                <button type="button" disabled={complete} onClick={() => chooseBinary("left")}>
+                  Search left half
+                </button>
+                <button type="button" disabled={complete} onClick={() => chooseBinary("found")}>
+                  Found target
+                </button>
+                <button type="button" disabled={complete} onClick={() => chooseBinary("right")}>
+                  Search right half
+                </button>
+              </div>
+            </section>
+          )}
+
+          {world.kind === "sort" && (
+            <section className="sort-mini-game" aria-label="Bubble sort conveyor">
+              <div className="packet-row">
+                {packets.map((packet) => (
+                  <span className="mini-packet" key={`${packet}-${packets.indexOf(packet)}`}>
+                    {packet}
+                  </span>
+                ))}
+              </div>
+              <div className="mini-actions">
+                {packets.slice(0, -1).map((packet, index) => (
+                  <button type="button" disabled={complete} key={`${packet}-${index}`} onClick={() => swapAt(index)}>
+                    Compare {packet} / {packets[index + 1]}
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {world.kind === "stack" && (
+            <section className="stack-mini-game" aria-label="Stack cargo elevator">
+              <div className="stack-tower">
+                {stack.map((crate, index) => (
+                  <button
+                    className={index === stack.length - 1 ? "top" : ""}
+                    disabled={complete}
+                    key={crate}
+                    onClick={() => popStack(crate)}
+                    type="button"
+                  >
+                    {crate}
+                  </button>
+                ))}
+              </div>
+              <p>Click the crate that can legally leave the stack.</p>
+            </section>
+          )}
+
+          {world.kind === "tree" && (
+            <section className="tree-mini-game" aria-label="Binary search tree branch finder">
+              <div className="tree-node-map">
+                <span>50</span>
+                <span>25</span>
+                <span>75</span>
+                <span>60</span>
+                <span className="target">68</span>
+              </div>
+              <div className="mini-rule-line">
+                <strong>Target 68</strong>
+                <span>Currently comparing at {currentTreeNode}</span>
+              </div>
+              <div className="mini-actions two">
+                <button type="button" disabled={complete} onClick={() => chooseTree("left")}>Go left</button>
+                <button type="button" disabled={complete} onClick={() => chooseTree("right")}>Go right</button>
+              </div>
+            </section>
+          )}
+
+          {world.kind === "graph" && (
+            <section className="graph-mini-game" aria-label="BFS queue rescue">
+              <div className="graph-node-row">
+                {graphVisible.map(({ node, done, active }) => (
+                  <button
+                    className={[done ? "done" : "", active ? "active" : ""].join(" ")}
+                    disabled={complete || done}
+                    key={node}
+                    onClick={() => chooseGraph(node)}
+                    type="button"
+                  >
+                    {node}
+                  </button>
+                ))}
+              </div>
+              <div className="queue-strip">
+                Queue front: {BFS_ORDER.slice(graphStep, graphStep + 3).join(" → ") || "empty"}
+              </div>
+            </section>
+          )}
+
+          {world.kind === "dijkstra" && (
+            <section className="dijkstra-mini-game" aria-label="Dijkstra route dispatcher">
+              <div className="weighted-map">
+                {currentDijkstra.frontier.map((route) => (
+                  <button
+                    disabled={complete}
+                    key={route}
+                    onClick={() => chooseDijkstra(route.split(":")[0])}
+                    type="button"
+                  >
+                    <small>FRONTIER</small>
+                    {route}
+                  </button>
+                ))}
+              </div>
+              <p>Lock the node with the lowest known distance.</p>
+            </section>
+          )}
+
+          {world.kind === "greedy" && (
+            <section className="greedy-mini-game" aria-label="Greedy interval planner">
+              <div className="interval-row">
+                {GREEDY_INTERVALS.map((interval) => (
+                  <button
+                    className={greedySelected.includes(interval.id) ? "selected" : ""}
+                    disabled={complete || greedySelected.includes(interval.id)}
+                    key={interval.id}
+                    onClick={() => chooseGreedy(interval.id)}
+                    type="button"
+                  >
+                    <span>{interval.label}</span>
+                    <small>finishes {interval.finish}</small>
+                  </button>
+                ))}
+              </div>
+              <p>Goal: select the most compatible events by earliest finish time.</p>
+            </section>
+          )}
+
+          {world.kind === "dp" && (
+            <section className="dp-mini-game" aria-label="Dynamic programming memo forge">
+              <div className="memo-row">
+                {dpVisible.map(({ value, visible, active }, index) => (
+                  <span className={active ? "active" : ""} key={index}>
+                    <small>fib({index})</small>
+                    {visible ? value : active ? "?" : "locked"}
+                  </span>
+                ))}
+              </div>
+              <div className="mini-actions">
+                {[1, 2, 3, 5].map((value) => (
+                  <button type="button" disabled={complete} key={value} onClick={() => chooseDp(value)}>
+                    Fill {value}
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
 
         {complete && (
           <div className="canvas-complete" role="dialog" aria-label={`${world.title} complete`}>
@@ -1489,12 +1500,12 @@ function AlgorithmRunnerWorld({
               <span>WORLD {world.level} CLEAR</span>
               <h2>Next world unlocked.</h2>
               <p>
-                You used {mechanic.concept} logic as the stage mechanic.
-                Guest progress unlocks the next world immediately.
+                You cleared {world.topics} by playing its core rule, not by
+                memorizing a definition.
               </p>
               <div className="canvas-complete-stats">
                 <strong>WORLD {world.level}</strong>
-                <strong>{world.topics.split(" - ")[0]}</strong>
+                <strong>{world.gameType}</strong>
                 <strong>UNLOCKED</strong>
               </div>
               <button type="button" onClick={onExit}>

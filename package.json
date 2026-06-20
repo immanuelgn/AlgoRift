@@ -2,7 +2,7 @@
   "name": "algorift",
   "version": "0.1.0",
   "private": true,
-  "description": "An original side-scrolling game that teaches algorithms through platforming, decisions, and boss battles.",
+  "description": "An original mini-game academy that teaches algorithms through focused interactive challenges.",
   "homepage": "https://algorift.vercel.app",
   "repository": {
     "type": "git",
