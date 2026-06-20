@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://algorift.vercel.app"),
   title: "AlgoRift | Learn algorithms by playing",
   description:
-    "A beginner-friendly platform adventure where every level teaches an algorithm and turns understanding into gameplay.",
+    "A minimalist interactive lab where visual mini-games teach algorithms through direct manipulation and immediate feedback.",
   keywords: [
     "algorithms",
     "data structures",
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   ],
   openGraph: {
     title: "AlgoRift",
-    description: "Learn algorithms. Play the decisions. Defeat the boss.",
+    description: "Understand algorithms by moving them.",
     url: "https://algorift.vercel.app",
     type: "website",
   },

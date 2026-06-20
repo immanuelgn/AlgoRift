@@ -4,6 +4,7 @@ import type { User } from "@supabase/supabase-js";
 import {
   ArrowLeft,
   ArrowRight,
+  BookOpen,
   Check,
   Cloud,
   CloudOff,
@@ -11,7 +12,6 @@ import {
   Eye,
   EyeOff,
   Github,
-  Home,
   KeyRound,
   LockKeyhole,
   LogIn,
@@ -24,9 +24,8 @@ import {
   Shield,
   Sparkles,
   Terminal,
+  Trophy,
   UserRound,
-  Volume2,
-  VolumeX,
 } from "lucide-react";
 import {
   type FormEvent,
@@ -253,11 +252,32 @@ function BrandMark() {
   );
 }
 
+function GamePreview({ kind }: { kind: MiniGameKind }) {
+  if (kind === "binary") {
+    return <div className="preview-binary"><i /><i /><i className="active" /><i /><i /></div>;
+  }
+  if (kind === "sort") {
+    return <div className="preview-sort-bars"><i /><i /><i /><i /></div>;
+  }
+  if (kind === "stack") {
+    return <div className="preview-stack"><i>A</i><i>B</i><i>C</i></div>;
+  }
+  if (kind === "tree") {
+    return <div className="preview-tree"><i>50</i><i>25</i><i>75</i></div>;
+  }
+  if (kind === "graph" || kind === "dijkstra") {
+    return <div className="preview-nodes"><i>A</i><i>B</i><i>C</i></div>;
+  }
+  if (kind === "greedy") {
+    return <div className="preview-intervals"><i /><i /><i /></div>;
+  }
+  return <div className="preview-memo"><i>1</i><i>2</i><i>3</i><i>5</i></div>;
+}
+
 export function AlgoRift() {
   const [view, setView] = useState<View>("home");
   const [progress, setProgress] = useState(DEFAULT_PROGRESS);
   const [ready, setReady] = useState(false);
-  const [soundOn, setSoundOn] = useState(true);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [authMode, setAuthMode] = useState<
@@ -280,7 +300,6 @@ export function AlgoRift() {
     "local" | "loading" | "saving" | "saved" | "error"
   >(isSupabaseConfigured ? "loading" : "local");
   const pageTop = useRef<HTMLDivElement>(null);
-  const learningGuide = useRef<HTMLElement>(null);
   const progressRef = useRef(progress);
 
   useEffect(() => {
@@ -463,16 +482,6 @@ export function AlgoRift() {
     });
   }
 
-  function showLearningGuide() {
-    setView("home");
-    window.requestAnimationFrame(() => {
-      learningGuide.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    });
-  }
-
   function startWorld(level: number) {
     if (level > progress.completedLevel + 1) return;
     setSelectedWorldLevel(level);
@@ -640,21 +649,11 @@ export function AlgoRift() {
 
         <nav className="main-nav" aria-label="Main navigation">
           <button
-            className={view === "home" ? "active" : ""}
-            type="button"
-            onClick={() => changeView("home")}
-          >
-            <Home size={16} /> Home
-          </button>
-          <button
             className={view === "world" ? "active" : ""}
             type="button"
             onClick={() => changeView("world")}
           >
             <Map size={16} /> Games
-          </button>
-          <button type="button" onClick={showLearningGuide}>
-            <Terminal size={16} /> Learn
           </button>
         </nav>
 
@@ -674,17 +673,14 @@ export function AlgoRift() {
             {user ? <Cloud size={17} /> : <UserRound size={17} />}
             <span>{user ? username || "Account" : "Account"}</span>
           </button>
-          <button
-            type="button"
-            className="sound-button"
-            onClick={() => setSoundOn((current) => !current)}
-            aria-label={soundOn ? "Mute game sounds" : "Enable game sounds"}
+          <div
+            className="header-progress"
+            aria-label={`${progress.completedLevel} of ${worlds.length} games mastered`}
           >
-            {soundOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
-          </button>
-          <div className="player-badge">
-            <span className="player-level">LV {displayLevel}</span>
-            <span className="player-xp">{progress.xp} XP</span>
+            <span>{progress.completedLevel}/{worlds.length}</span>
+            <i>
+              <b style={{ width: `${(progress.completedLevel / worlds.length) * 100}%` }} />
+            </i>
           </div>
         </div>
       </header>
@@ -712,7 +708,82 @@ export function AlgoRift() {
       )}
 
       {view === "home" && (
-        <main className="home-view">
+        <>
+        <main className="minimal-home">
+          <section className="minimal-hero">
+            <div className="minimal-hero-copy">
+              <span className="eyebrow">INTERACTIVE ALGORITHM LAB</span>
+              <h1>Understand algorithms by moving them.</h1>
+              <p>
+                Eight visual mini-games. Each teaches one idea through direct
+                interaction, immediate feedback, and a clear goal.
+              </p>
+              <div className="hero-buttons">
+                <button
+                  className="game-primary"
+                  type="button"
+                  onClick={() => startWorld(nextPlayableWorld)}
+                >
+                  <Play size={18} fill="currentColor" />
+                  {progress.completedLevel >= worlds.length
+                    ? "Replay final game"
+                    : `Continue: ${nextWorld.title}`}
+                </button>
+                <button
+                  className="quiet-button"
+                  type="button"
+                  onClick={() => changeView("world")}
+                >
+                  View learning path <ArrowRight size={17} />
+                </button>
+              </div>
+            </div>
+
+            <div className="next-game-card">
+              <div className={`next-game-visual visual-${nextWorld.kind}`} aria-hidden="true">
+                <span>{nextWorld.level.toString().padStart(2, "0")}</span>
+                <GamePreview kind={nextWorld.kind} />
+              </div>
+              <div className="next-game-copy">
+                <small>
+                  {progress.completedLevel >= worlds.length ? "REPLAY" : "UP NEXT"}
+                  {" "}· {nextWorld.difficulty}
+                </small>
+                <h2>{nextWorld.title}</h2>
+                <strong>{nextWorld.topics}</strong>
+                <p>{nextWorld.description}</p>
+                <div className="compact-progress">
+                  <span>{progress.completedLevel} of {worlds.length} mastered</span>
+                  <i>
+                    <b style={{ width: `${(progress.completedLevel / worlds.length) * 100}%` }} />
+                  </i>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="home-path-preview" aria-label="Algorithm learning path">
+            {worlds.map((world) => {
+              const mastered = progress.completedLevel >= world.level;
+              const current = world.level === nextPlayableWorld;
+              return (
+                <button
+                  type="button"
+                  key={world.level}
+                  className={[mastered ? "mastered" : "", current ? "current" : ""].join(" ")}
+                  disabled={world.level > progress.completedLevel + 1}
+                  onClick={() => startWorld(world.level)}
+                  aria-label={`${world.title}: ${mastered ? "mastered" : current ? "play next" : "locked"}`}
+                >
+                  <span>{mastered ? <Check size={15} /> : world.level}</span>
+                  <small>{world.topics}</small>
+                </button>
+              );
+            })}
+          </section>
+        </main>
+
+        <main className="home-view legacy-home" aria-hidden="true">
           <section className="home-hero">
             <div className="hero-sky">
               <div className="cloud cloud-one" />
@@ -749,7 +820,7 @@ export function AlgoRift() {
                 <button
                   className="game-secondary"
                   type="button"
-                  onClick={showLearningGuide}
+                  onClick={() => changeView("world")}
                 >
                   Learn algorithms <ArrowRight size={17} />
                 </button>
@@ -819,7 +890,7 @@ export function AlgoRift() {
             </div>
           </section>
 
-          <section className="learning-strip" ref={learningGuide}>
+          <section className="learning-strip">
             <div className="simple-heading">
               <span>WHAT YOU LEARN</span>
               <h2>Algorithms become different mini-games.</h2>
@@ -886,6 +957,7 @@ export function AlgoRift() {
             </div>
           </section>
         </main>
+        </>
       )}
 
       {view === "game" && (
@@ -900,11 +972,10 @@ export function AlgoRift() {
         <main className="world-view">
           <div className="world-heading curriculum-heading">
             <div>
-              <span className="section-label"><Map size={15} /> Learning path</span>
-              <h1>Choose your next mini-game</h1>
+              <span className="section-label"><Map size={15} /> Your progress</span>
+              <h1>Learning path</h1>
               <p>
-                Start with search, then unlock sorting, data structures,
-                graphs, greedy algorithms, and dynamic programming.
+                Play the highlighted step. Master it to unlock the next.
               </p>
             </div>
             <div className="world-summary">
@@ -913,28 +984,15 @@ export function AlgoRift() {
             </div>
           </div>
 
-          <section className="curriculum-guide" aria-label="How progression works">
-            <article>
-              <span>1</span>
-              <div>
-                <strong>Play the highlighted game</strong>
-                <p>Only the next concept is required. Cleared games stay replayable.</p>
-              </div>
-            </article>
-            <article>
-              <span>2</span>
-              <div>
-                <strong>Learn by making moves</strong>
-                <p>The board reacts immediately and explains why a move works.</p>
-              </div>
-            </article>
-            <article>
-              <span>3</span>
-              <div>
-                <strong>Unlock the next concept</strong>
-                <p>Difficulty increases gradually from Starter to Boss.</p>
-              </div>
-            </article>
+          <section className="path-status" aria-label="Progression summary">
+            <div>
+              <Trophy size={18} />
+              <span><strong>{progress.completedLevel}</strong> mastered</span>
+            </div>
+            <div className="path-status-track">
+              <span style={{ width: `${(progress.completedLevel / worlds.length) * 100}%` }} />
+            </div>
+            <span>Next: <strong>{nextWorld.title}</strong></span>
           </section>
 
           <section className="world-path mini-game-library">
@@ -963,7 +1021,11 @@ export function AlgoRift() {
                       <LockKeyhole size={18} />
                     )}
                   </div>
-                  <div className="level-card">
+                  <div className="level-card path-card">
+                    <div className={`path-card-visual visual-${world.kind}`} aria-hidden="true">
+                      <span>{world.level.toString().padStart(2, "0")}</span>
+                      <GamePreview kind={world.kind} />
+                    </div>
                     <div className="level-card-top">
                       <span>GAME {world.level}</span>
                       <span>
@@ -1028,9 +1090,9 @@ export function AlgoRift() {
             >
               <div className="result-card reset-card">
                 <span>RESET SAVE DATA?</span>
-                <h2>Return to World 1</h2>
+                <h2>Return to Game 1</h2>
                 <p>
-                  This removes earned XP and completed worlds
+                  This removes earned XP and completed games
                   {user ? " from this account and device" : " from this device"}.
                 </p>
                 <div className="result-actions">
@@ -1101,9 +1163,9 @@ type MiniGameWorldProps = {
 const BINARY_VALUES = [3, 8, 12, 17, 23, 31, 42];
 const SORT_START = [6, 3, 8, 1, 5];
 const TREE_PATH = [
-  { node: 50, correct: "right", hint: "68 is larger than 50, so move right." },
-  { node: 75, correct: "left", hint: "68 is smaller than 75, so move left." },
-  { node: 60, correct: "right", hint: "68 is larger than 60, so move right." },
+  { node: 50, choices: [25, 75], correct: 75, hint: "68 is larger than 50, so choose the right child: 75." },
+  { node: 75, choices: [60, 90], correct: 60, hint: "68 is smaller than 75, so choose the left child: 60." },
+  { node: 60, choices: [55, 68], correct: 68, hint: "68 is larger than 60, so choose the right child: 68." },
 ] as const;
 const BFS_ORDER = ["A", "B", "C", "D", "E", "F"];
 const DIJKSTRA_STEPS = [
@@ -1148,6 +1210,7 @@ function MiniGameWorld({
   const [message, setMessage] = useState(world.lesson);
   const [mistakes, setMistakes] = useState(0);
   const [complete, setComplete] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
   useEffect(() => {
     resetMiniGame();
@@ -1188,6 +1251,7 @@ function MiniGameWorld({
     setMessage(world.lesson);
     setMistakes(0);
     setComplete(false);
+    setShowGuide(false);
   }
 
   function chooseBinary(action: "left" | "right" | "found") {
@@ -1284,16 +1348,20 @@ function MiniGameWorld({
     setMessage(`${value} popped from the top. The next removable crate is ${next[next.length - 1]}.`);
   }
 
-  function chooseTree(direction: "left" | "right") {
+  function chooseTree(value: number) {
     const step = TREE_PATH[treeStep];
-    if (direction !== step.correct) {
+    if (!(step.choices as readonly number[]).includes(value)) {
+      miss(`Choose one of the two children connected to ${step.node}.`);
+      return;
+    }
+    if (value !== step.correct) {
       miss(step.hint);
       return;
     }
     const nextStep = treeStep + 1;
     setTreeStep(nextStep);
     if (nextStep >= TREE_PATH.length) {
-      completeMiniGame("Route found: 50 → 75 → 60 → 68. BST comparisons guided every branch.");
+      completeMiniGame("Route found: 50 -> 75 -> 60 -> 68. BST comparisons guided every branch.");
       return;
     }
     setMessage(`Correct branch. Now compare 68 with ${TREE_PATH[nextStep].node}.`);
@@ -1369,6 +1437,8 @@ function MiniGameWorld({
     pivot: index === pivotIndex,
   }));
   const currentTreeNode = TREE_PATH[treeStep]?.node ?? 68;
+  const treeChoices = (TREE_PATH[treeStep]?.choices ?? []) as readonly number[];
+  const treeVisited = [50, 75, 60].slice(0, treeStep);
   const graphVisible = BFS_ORDER.map((node, index) => ({
     node,
     done: index < graphStep,
@@ -1411,12 +1481,22 @@ function MiniGameWorld({
           <span>GAME {world.level}</span>
           <strong>{world.title}</strong>
         </div>
-        <button type="button" onClick={resetMiniGame}>
-          <RotateCcw size={16} /> Restart
-        </button>
+        <div className="mini-toolbar-actions">
+          <button
+            type="button"
+            aria-expanded={showGuide}
+            onClick={() => setShowGuide((shown) => !shown)}
+          >
+            <BookOpen size={16} /> {showGuide ? "Hide guide" : "How it works"}
+          </button>
+          <button type="button" onClick={resetMiniGame}>
+            <RotateCcw size={16} /> Restart
+          </button>
+        </div>
       </header>
 
-      <section className={`mini-game-shell world-${world.color}`}>
+      <section className={`mini-game-shell world-${world.color} ${showGuide ? "guide-open" : ""}`}>
+        {showGuide && (
         <aside className="mini-game-brief">
           <span>{world.difficulty} · {world.gameType}</span>
           <h1>{world.title}</h1>
@@ -1426,11 +1506,8 @@ function MiniGameWorld({
             <small>WHAT THIS TEACHES</small>
             <p>{world.lesson}</p>
           </div>
-          <div className={mistakes > 0 ? "mini-feedback warn" : "mini-feedback"}>
-            <small>{complete ? "CLEARED" : "LIVE FEEDBACK"}</small>
-            <p>{message}</p>
-          </div>
         </aside>
+        )}
 
         <div className="mini-game-board">
           <div className="mini-game-hud">
@@ -1445,6 +1522,14 @@ function MiniGameWorld({
               <small>MISREADS</small>
               <strong>{mistakes}</strong>
             </div>
+          </div>
+          <div
+            className={mistakes > 0 ? "board-feedback warn" : "board-feedback"}
+            role="status"
+            aria-live="polite"
+          >
+            <span>{complete ? <Check size={16} /> : <Sparkles size={16} />}</span>
+            <p>{message}</p>
           </div>
 
           {world.kind === "binary" && (
@@ -1574,18 +1659,31 @@ function MiniGameWorld({
               </div>
               <div className="tree-node-map">
                 <span className={treeStep === 0 ? "current" : "visited"}>50</span>
-                <span>25</span>
-                <span className={treeStep === 1 ? "current" : treeStep > 1 ? "visited" : ""}>75</span>
-                <span className={treeStep === 2 ? "current" : treeStep > 2 ? "visited" : ""}>60</span>
-                <span className="target">68</span>
+                {[25, 75, 55, 60, 68, 90].map((value) => {
+                  const isChoice = treeChoices.includes(value);
+                  const isVisited = treeVisited.includes(value);
+                  const isCurrent = currentTreeNode === value;
+                  return (
+                    <button
+                      type="button"
+                      key={value}
+                      className={[
+                        value === 68 ? "target" : "",
+                        isChoice ? "choice" : "",
+                        isVisited ? "visited" : "",
+                        isCurrent ? "current" : "",
+                      ].join(" ")}
+                      disabled={complete || !isChoice}
+                      onClick={() => chooseTree(value)}
+                    >
+                      {value}
+                    </button>
+                  );
+                })}
               </div>
               <div className="mini-rule-line">
                 <strong>Target 68</strong>
-                <span>Currently comparing at {currentTreeNode}</span>
-              </div>
-              <div className="mini-actions two">
-                <button type="button" disabled={complete} onClick={() => chooseTree("left")}>Go left</button>
-                <button type="button" disabled={complete} onClick={() => chooseTree("right")}>Go right</button>
+                <span>Click a child of {currentTreeNode}</span>
               </div>
             </section>
           )}
