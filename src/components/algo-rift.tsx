@@ -1261,14 +1261,50 @@ function MiniGameWorld({
   const [mistakes, setMistakes] = useState(0);
   const [complete, setComplete] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  const [feedbackTone, setFeedbackTone] = useState<"idle" | "reward" | "miss" | "clear">("idle");
+  const [streak, setStreak] = useState(0);
+  const [rewardText, setRewardText] = useState("");
+  const [rewardKey, setRewardKey] = useState(0);
+  const feedbackTimer = useRef<number | null>(null);
 
   useEffect(() => {
     resetMiniGame();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [world.level]);
 
+  useEffect(() => {
+    return () => {
+      if (feedbackTimer.current) {
+        window.clearTimeout(feedbackTimer.current);
+      }
+    };
+  }, []);
+
+  function flashFeedback(
+    tone: "reward" | "miss" | "clear",
+    label: string,
+    hold = 520,
+  ) {
+    if (feedbackTimer.current) {
+      window.clearTimeout(feedbackTimer.current);
+    }
+    setFeedbackTone(tone);
+    setRewardText(label);
+    setRewardKey((current) => current + 1);
+    feedbackTimer.current = window.setTimeout(() => {
+      setFeedbackTone("idle");
+    }, hold);
+  }
+
+  function reward(label = "Nice move") {
+    setStreak((current) => current + 1);
+    flashFeedback("reward", label);
+  }
+
   function completeMiniGame(detail: string) {
     if (complete) return;
+    setStreak((current) => current + 1);
+    flashFeedback("clear", "Game clear", 900);
     setMessage(detail);
     setComplete(true);
     onComplete({
@@ -1280,6 +1316,8 @@ function MiniGameWorld({
 
   function miss(hint: string) {
     setMistakes((current) => current + 1);
+    setStreak(0);
+    flashFeedback("miss", "Re-check rule");
     setMessage(hint);
   }
 
@@ -1302,6 +1340,10 @@ function MiniGameWorld({
     setMistakes(0);
     setComplete(false);
     setShowGuide(false);
+    setFeedbackTone("idle");
+    setStreak(0);
+    setRewardText("");
+    setRewardKey(0);
   }
 
   function chooseBinary(action: "left" | "right" | "found") {
@@ -1312,11 +1354,13 @@ function MiniGameWorld({
       return;
     }
     if (pivot < 42 && action === "right") {
+      reward("Range cut");
       setBinaryLow(pivotIndex + 1);
       setMessage(`${pivot} is too small, so the left half is impossible. Keep the right half.`);
       return;
     }
     if (pivot > 42 && action === "left") {
+      reward("Range cut");
       setBinaryHigh(pivotIndex - 1);
       setMessage(`${pivot} is too large, so the right half is impossible. Keep the left half.`);
       return;
@@ -1342,6 +1386,7 @@ function MiniGameWorld({
       next[sortCursor] = right;
       next[sortCursor + 1] = left;
     }
+    reward(shouldSwap ? "Clean swap" : "Good keep");
     setPackets(next);
 
     const atPassEnd = sortCursor >= next.length - 2;
@@ -1373,6 +1418,7 @@ function MiniGameWorld({
     }
     const nextDock = stackDock.slice(1);
     const nextStack = [...stack, value];
+    reward("Pushed");
     setStack(nextStack);
     setStackDock(nextDock);
     if (nextDock.length === 0) {
@@ -1390,6 +1436,7 @@ function MiniGameWorld({
       return;
     }
     const next = stack.slice(0, -1);
+    reward("Popped");
     setStack(next);
     if (next.length === 0) {
       completeMiniGame("Stack cleared in C, B, A order. That is last-in, first-out.");
@@ -1409,6 +1456,7 @@ function MiniGameWorld({
       return;
     }
     const nextStep = treeStep + 1;
+    reward("Branch read");
     setTreeStep(nextStep);
     if (nextStep >= TREE_PATH.length) {
       completeMiniGame("Route found: 50 -> 75 -> 60 -> 68. BST comparisons guided every branch.");
@@ -1424,6 +1472,7 @@ function MiniGameWorld({
       return;
     }
     const nextStep = graphStep + 1;
+    reward("Queue served");
     setGraphStep(nextStep);
     if (nextStep >= BFS_ORDER.length) {
       completeMiniGame("All nodes rescued in BFS order. Queue discipline kept the search level by level.");
@@ -1439,6 +1488,7 @@ function MiniGameWorld({
       return;
     }
     const nextStep = dijkstraStep + 1;
+    reward("Lowest locked");
     setDijkstraStep(nextStep);
     if (nextStep >= DIJKSTRA_STEPS.length) {
       completeMiniGame("Shortest route confirmed. The lowest-distance frontier won every round.");
@@ -1455,6 +1505,7 @@ function MiniGameWorld({
     }
     const nextSelected = [...greedySelected, intervalId];
     const nextStep = greedyStep + 1;
+    reward("Slot claimed");
     setGreedySelected(nextSelected);
     setGreedyStep(nextStep);
     if (nextStep >= GREEDY_ORDER.length) {
@@ -1471,6 +1522,7 @@ function MiniGameWorld({
       return;
     }
     const nextIndex = dpIndex + 1;
+    reward("Cached");
     setDpIndex(nextIndex);
     if (nextIndex >= DP_VALUES.length) {
       completeMiniGame("Memo table complete. Each new value reused the two cached answers before it.");
@@ -1579,7 +1631,7 @@ function MiniGameWorld({
         </aside>
         )}
 
-        <div className="mini-game-board">
+        <div className={`mini-game-board feedback-${feedbackTone}`}>
           <div className="mini-game-hud">
             <div>
               <small>MISSION PROGRESS</small>
@@ -1592,7 +1644,20 @@ function MiniGameWorld({
               <small>MISREADS</small>
               <strong>{mistakes}</strong>
             </div>
+            <div className={streak > 1 ? "streak-meter live" : "streak-meter"}>
+              <small>STREAK</small>
+              <strong>{streak}x</strong>
+            </div>
           </div>
+          {rewardText && (
+            <div
+              className={`reward-pop reward-${feedbackTone}`}
+              key={rewardKey}
+              aria-hidden="true"
+            >
+              {rewardText}
+            </div>
+          )}
           <div
             className={mistakes > 0 ? "board-feedback warn" : "board-feedback"}
             role="status"

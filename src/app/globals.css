@@ -5484,6 +5484,7 @@ a:focus-visible {
   min-height: 620px;
   overflow: hidden;
   padding: clamp(20px, 4vw, 38px);
+  position: relative;
 }
 
 .mini-game-hud {
@@ -5493,7 +5494,7 @@ a:focus-visible {
   color: #fffdf3;
   display: grid;
   gap: 14px;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr auto auto;
   margin-bottom: 24px;
   padding: 13px 16px;
 }
@@ -5513,6 +5514,21 @@ a:focus-visible {
 
 .mini-game-hud strong {
   color: #ffd84d;
+}
+
+.streak-meter {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  min-width: 72px;
+  padding: 8px 10px;
+  text-align: center;
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.streak-meter.live {
+  animation: streakBump 460ms ease;
+  background: rgba(167, 243, 91, 0.17);
 }
 
 .mini-progress-track {
@@ -5702,6 +5718,16 @@ a:focus-visible {
 .stack-tower button:hover {
   background: #a7f35b;
   transform: translateY(-1px);
+}
+
+.mini-actions button:active,
+.graph-network button:active,
+.weighted-map button:active,
+.interval-row button:active,
+.stack-dock button:active,
+.stack-tower button:active {
+  box-shadow: 0 2px 0 rgba(17, 22, 45, 0.2);
+  transform: translateY(3px) scale(0.98);
 }
 
 .mini-actions button:disabled,
@@ -7250,6 +7276,58 @@ a:focus-visible {
   margin: 0;
 }
 
+.reward-pop {
+  animation: rewardFloat 720ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  background: #a7f35b;
+  border: 3px solid #11162d;
+  border-radius: 999px;
+  box-shadow: 0 8px 0 rgba(17, 22, 45, 0.14);
+  color: #11162d;
+  font-family: Consolas, monospace;
+  font-size: 12px;
+  font-weight: 1000;
+  left: 50%;
+  letter-spacing: 0.08em;
+  padding: 10px 14px;
+  pointer-events: none;
+  position: absolute;
+  text-transform: uppercase;
+  top: 112px;
+  transform: translateX(-50%);
+  z-index: 8;
+}
+
+.reward-miss {
+  background: #ffe0db;
+  color: #9b3028;
+}
+
+.reward-clear {
+  background: #ffd84d;
+}
+
+.mini-game-board.feedback-reward {
+  animation: boardRewardPulse 460ms ease;
+}
+
+.mini-game-board.feedback-miss {
+  animation: boardMissShake 260ms ease;
+}
+
+.mini-game-board.feedback-clear::after {
+  animation: clearSparkle 900ms ease both;
+  background:
+    radial-gradient(circle at 18% 28%, #ffd84d 0 0.7%, transparent 0.8%),
+    radial-gradient(circle at 78% 25%, #a7f35b 0 0.9%, transparent 1%),
+    radial-gradient(circle at 64% 72%, #67e8f9 0 0.75%, transparent 0.85%),
+    radial-gradient(circle at 32% 78%, #ff71a9 0 0.65%, transparent 0.75%);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 7;
+}
+
 /* Each game uses a distinct spatial metaphor so the algorithm action feels physical. */
 .game-theme-binary .mini-game-board {
   background: radial-gradient(circle at 50% 58%, #152d4b 0 18%, #081725 58%, #040b13 100%);
@@ -7817,6 +7895,44 @@ a:focus-visible {
 
 @keyframes rollerTurn {
   to { transform: rotate(360deg); }
+}
+
+@keyframes rewardFloat {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 12px) scale(0.82);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1.08);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -42px) scale(1);
+  }
+}
+
+@keyframes boardRewardPulse {
+  0%, 100% { box-shadow: 0 12px 0 rgba(17, 22, 45, 0.16); }
+  45% { box-shadow: 0 12px 0 rgba(17, 22, 45, 0.16), 0 0 0 7px rgba(167, 243, 91, 0.36); }
+}
+
+@keyframes boardMissShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  50% { transform: translateX(5px); }
+  75% { transform: translateX(-3px); }
+}
+
+@keyframes clearSparkle {
+  0% { opacity: 0; transform: scale(0.98); }
+  25% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.05); }
+}
+
+@keyframes streakBump {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
 }
 
 @media (max-width: 900px) {
