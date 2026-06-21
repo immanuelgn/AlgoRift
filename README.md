@@ -18,10 +18,21 @@ progression from beginner search techniques to dynamic programming.
 6. **Shortest Route - Dijkstra:** lock the cheapest node on the current frontier.
 7. **Interval Planner - Greedy:** build a compatible schedule by earliest finish.
 8. **Memo Forge - Dynamic Programming:** construct Fibonacci values from cached cells.
+9. **Sorting Arsenal:** practice insertion, selection, exchange, merge, quick, and heap sort.
+10. **Depth Dive - DFS:** explore deeply and backtrack with an explicit stack.
+11. **Grid Architect - MST:** build a minimum spanning tree with Kruskal's rule.
+12. **Code Compressor - Huffman:** merge minimum frequencies into a prefix tree.
 
 Every incorrect move explains the relevant rule without revealing the entire
 solution. Completing a game unlocks the next concept, while mastered games
 remain replayable.
+
+## Course Topic Coverage
+
+AlgoRift includes interactive coverage of the COE428 topics shown in the
+course resources: insertion, merge, heap, selection, exchange, quick, and
+bubble sort; breadth-first search; depth-first search; Dijkstra's algorithm;
+minimum spanning trees; and Huffman compression.
 
 ## Accounts and Security
 

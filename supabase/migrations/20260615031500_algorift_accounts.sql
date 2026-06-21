@@ -20,7 +20,7 @@ create table if not exists public.game_progress (
   redline_vision_unlocked boolean not null default false,
   updated_at timestamptz not null default now(),
   constraint game_progress_level_range
-    check (completed_level between 0 and 8),
+    check (completed_level between 0 and 12),
   constraint game_progress_xp_range
     check (xp between 0 and 1000000)
 );

@@ -28,7 +28,7 @@ alter table public.game_progress
 
 alter table public.game_progress
   add constraint game_progress_level_range
-  check (completed_level between 0 and 8);
+  check (completed_level between 0 and 12);
 
 alter table public.profiles enable row level security;
 alter table public.game_progress enable row level security;

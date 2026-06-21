@@ -2819,6 +2819,7 @@ a:focus-visible {
 .world-violet { --world-color: var(--violet); }
 .world-gold { --world-color: var(--gold); }
 .world-rose { --world-color: var(--rose); }
+.world-orange { --world-color: var(--orange); }
 
 .level-card-top {
   display: flex;
@@ -8733,5 +8734,419 @@ a:focus-visible {
   .memo-forge .memo-row span:nth-child(7),
   .memo-forge .memo-row span:nth-child(9) {
     left: calc(50% - 46px);
+  }
+}
+
+/* COE428 curriculum expansion and exact tree geometry. */
+.mini-game-library .visual-sortlab { background: linear-gradient(145deg, #ff8b3d, #ffd84d); }
+.mini-game-library .visual-dfs { background: linear-gradient(145deg, #342973, #7968f2); }
+.mini-game-library .visual-mst { background: linear-gradient(145deg, #f8d775, #d79a2a); }
+.mini-game-library .visual-huffman { background: radial-gradient(circle, #ff9fc2, #5a1837); }
+
+.preview-arsenal,
+.preview-depth,
+.preview-mst,
+.preview-huffman {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+}
+
+.preview-arsenal i,
+.preview-depth i,
+.preview-mst i,
+.preview-huffman i,
+.preview-huffman strong {
+  align-items: center;
+  background: #fffdf3;
+  border: 2px solid #11162d;
+  border-radius: 10px;
+  color: #11162d;
+  display: flex;
+  font-family: Consolas, monospace;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+  height: 48px;
+  justify-content: center;
+  min-width: 54px;
+  padding: 7px;
+}
+
+.preview-depth b,
+.preview-mst b {
+  background: #11162d;
+  height: 4px;
+  position: absolute;
+  transform: rotate(22deg);
+  width: 160px;
+  z-index: -1;
+}
+
+.preview-huffman strong {
+  background: #ffd84d;
+  border-radius: 999px;
+}
+
+.tree-node-map {
+  display: block;
+  height: 520px;
+  max-width: 780px;
+  overflow: hidden;
+  padding: 0;
+  position: relative;
+  width: 100%;
+}
+
+.tree-lines {
+  height: 100%;
+  inset: 0;
+  position: absolute;
+  width: 100%;
+  z-index: 1;
+}
+
+.tree-lines line {
+  stroke: #795133;
+  stroke-linecap: round;
+  stroke-width: 1.4;
+}
+
+.tree-node-map > span,
+.tree-node-map > button {
+  height: 78px;
+  margin: 0;
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 78px;
+  z-index: 2;
+}
+
+.tree-node-map > span {
+  border-radius: 50%;
+}
+
+.tree-node-map > span:first-child {
+  grid-column: auto;
+}
+
+.tree-node-map button:hover {
+  transform: translate(-50%, calc(-50% - 3px)) scale(1.04);
+}
+
+.tree-node-map button:active {
+  transform: translate(-50%, calc(-50% + 2px)) scale(0.98);
+}
+
+.game-theme-sortlab .mini-game-board {
+  background: linear-gradient(145deg, #fff4c8, #ffb35c);
+}
+
+.game-theme-dfs .mini-game-board {
+  background:
+    linear-gradient(rgba(255,255,255,0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.12) 1px, transparent 1px),
+    linear-gradient(145deg, #201a4e, #5a46ae);
+  background-size: 38px 38px, 38px 38px, auto;
+  color: #fff;
+}
+
+.game-theme-mst .mini-game-board {
+  background: linear-gradient(145deg, #fff5ce, #f0c253);
+}
+
+.game-theme-huffman .mini-game-board {
+  background:
+    radial-gradient(circle at 50% 60%, rgba(255,113,169,0.34), transparent 35%),
+    linear-gradient(145deg, #1c142d, #421a38);
+  color: #fff;
+}
+
+.sortlab-mini-game,
+.dfs-mini-game,
+.mst-mini-game,
+.huffman-mini-game {
+  display: grid;
+  gap: 24px;
+  min-height: 600px;
+}
+
+.station-progress {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.station-progress span {
+  align-items: center;
+  background: rgba(255,255,255,0.58);
+  border: 2px solid #11162d;
+  border-radius: 999px;
+  display: flex;
+  font-family: Consolas, monospace;
+  font-size: 10px;
+  font-weight: 900;
+  height: 32px;
+  justify-content: center;
+  width: 32px;
+}
+
+.station-progress span.done { background: #a7f35b; }
+.station-progress span.active {
+  background: #ffd84d;
+  box-shadow: 0 0 0 6px rgba(255,216,77,0.3);
+}
+
+.sorting-workbench {
+  background: rgba(255,253,243,0.88);
+  border: 4px solid #11162d;
+  border-radius: 24px;
+  box-shadow: 0 10px 0 rgba(17,22,45,0.14);
+  padding: clamp(22px, 4vw, 42px);
+  text-align: center;
+}
+
+.sorting-workbench > small,
+.dfs-stack small,
+.mst-budget small {
+  color: #6f56e8;
+  font-family: Consolas, monospace;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.sorting-scene {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin: 34px 0;
+}
+
+.sorting-scene span {
+  align-items: center;
+  background: #67e8f9;
+  border: 3px solid #11162d;
+  border-radius: 12px;
+  box-shadow: 0 6px 0 rgba(17,22,45,0.16);
+  display: flex;
+  font-size: 30px;
+  font-weight: 1000;
+  height: 76px;
+  justify-content: center;
+  min-width: 64px;
+}
+
+.sorting-scene span.divider {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  min-width: 10px;
+}
+
+.sorting-workbench h2 {
+  font-size: clamp(22px, 3vw, 34px);
+  margin: 0 0 26px;
+}
+
+.dfs-stack,
+.mst-budget {
+  background: #11162d;
+  border: 2px solid rgba(255,255,255,0.25);
+  border-radius: 16px;
+  color: #fff;
+  padding: 16px;
+  text-align: center;
+}
+
+.dfs-stack strong,
+.mst-budget strong {
+  display: block;
+  font-family: Consolas, monospace;
+  font-size: 22px;
+  margin-top: 8px;
+}
+
+.dfs-network {
+  margin: 0 auto;
+}
+
+.mst-map {
+  background: rgba(255,255,255,0.58);
+  border: 4px solid #11162d;
+  border-radius: 24px;
+  height: 470px;
+  margin: 0 auto;
+  max-width: 820px;
+  position: relative;
+  width: 100%;
+}
+
+.mst-map svg {
+  height: 100%;
+  inset: 0;
+  position: absolute;
+  width: 100%;
+}
+
+.mst-map line {
+  stroke: #697080;
+  stroke-width: 1;
+}
+
+.mst-map g.accepted line {
+  stroke: #39b979;
+  stroke-width: 2.2;
+}
+
+.mst-map text {
+  fill: #11162d;
+  font-family: Consolas, monospace;
+  font-size: 4px;
+  font-weight: 900;
+  paint-order: stroke;
+  stroke: #fff5ce;
+  stroke-width: 1.5px;
+  text-anchor: middle;
+}
+
+.mst-node {
+  align-items: center;
+  background: #fffdf3;
+  border: 4px solid #11162d;
+  border-radius: 50%;
+  display: flex;
+  font-size: 28px;
+  font-weight: 1000;
+  height: 84px;
+  justify-content: center;
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 84px;
+}
+
+.mst-edge-bank {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.mst-edge-bank button {
+  background: #fffdf3;
+  border: 3px solid #11162d;
+  border-radius: 12px;
+  box-shadow: 0 5px 0 rgba(17,22,45,0.15);
+  cursor: pointer;
+  font-weight: 900;
+  padding: 12px 16px;
+}
+
+.mst-edge-bank button strong {
+  background: #ffd84d;
+  border-radius: 999px;
+  margin-left: 8px;
+  padding: 5px 8px;
+}
+
+.mst-edge-bank button.accepted {
+  background: #a7f35b;
+}
+
+.frequency-pool {
+  align-content: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  justify-content: center;
+  min-height: 360px;
+}
+
+.frequency-pool button {
+  align-items: center;
+  background: #fffdf3;
+  border: 4px solid #11162d;
+  border-radius: 50%;
+  box-shadow: 0 9px 0 rgba(0,0,0,0.22);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  height: 130px;
+  justify-content: center;
+  min-width: 130px;
+  padding: 14px;
+}
+
+.frequency-pool button.selected {
+  background: #ffd84d;
+  box-shadow: 0 9px 0 rgba(0,0,0,0.22), 0 0 0 8px rgba(255,216,77,0.3);
+  transform: translateY(-7px);
+}
+
+.frequency-pool button small {
+  font-family: Consolas, monospace;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.frequency-pool button strong {
+  font-size: 36px;
+}
+
+.compression-meter {
+  background: #2e2947;
+  border: 2px solid #ff9fc2;
+  border-radius: 999px;
+  height: 16px;
+  overflow: hidden;
+}
+
+.compression-meter span {
+  background: linear-gradient(90deg, #ff71a9, #ffd84d);
+  display: block;
+  height: 100%;
+  transition: width 220ms ease;
+}
+
+.huffman-rule {
+  background: rgba(255,253,243,0.95);
+  border: 3px solid #11162d;
+  border-radius: 16px;
+  color: #11162d;
+  padding: 18px;
+  text-align: center;
+}
+
+.huffman-rule p {
+  margin: 7px 0 0;
+}
+
+@media (max-width: 760px) {
+  .tree-node-map {
+    height: 430px;
+  }
+
+  .tree-node-map > span,
+  .tree-node-map > button {
+    height: 62px;
+    width: 62px;
+  }
+
+  .sorting-workbench .mini-actions.three {
+    grid-template-columns: 1fr;
+  }
+
+  .mst-map {
+    height: 410px;
+  }
+
+  .mst-node {
+    height: 62px;
+    width: 62px;
   }
 }
