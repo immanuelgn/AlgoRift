@@ -28,7 +28,9 @@ import {
   UserRound,
 } from "lucide-react";
 import {
+  Component,
   type FormEvent,
+  type ReactNode,
   useCallback,
   useEffect,
   useRef,
@@ -47,6 +49,48 @@ type PlayerProgress = {
   xp: number;
   redlineVisionUnlocked: boolean;
 };
+
+class GameErrorBoundary extends Component<
+  { children: ReactNode; onExit: () => void },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <main className="mini-game-view">
+          <section className="game-recovery-card" role="alert">
+            <Sparkles size={28} />
+            <span>GAME RECOVERY</span>
+            <h1>This board hit an unexpected state.</h1>
+            <p>
+              Your saved progress is safe. Reload this game with fresh board
+              state or return to the game library.
+            </p>
+            <div>
+              <button
+                type="button"
+                onClick={() => this.setState({ hasError: false })}
+              >
+                <RotateCcw size={17} /> Reload game
+              </button>
+              <button type="button" onClick={this.props.onExit}>
+                <ArrowLeft size={17} /> Game library
+              </button>
+            </div>
+          </section>
+        </main>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 const STORAGE_KEY = "algorift-progress-v2";
 const DEFAULT_PROGRESS: PlayerProgress = {
@@ -1058,11 +1102,16 @@ export function AlgoRift() {
       )}
 
       {view === "game" && (
-        <MiniGameWorld
-          world={selectedWorld}
-          onComplete={handleGameComplete}
+        <GameErrorBoundary
+          key={selectedWorld.level}
           onExit={() => changeView("world")}
-        />
+        >
+          <MiniGameWorld
+            world={selectedWorld}
+            onComplete={handleGameComplete}
+            onExit={() => changeView("world")}
+          />
+        </GameErrorBoundary>
       )}
 
       {view === "world" && (
@@ -2317,6 +2366,62 @@ function MiniGameWorld({
           (interval) => interval.id === greedySelected[greedySelected.length - 1],
         )?.finish ?? 0
       : 0;
+  const conceptBridge =
+    world.kind === "tree"
+      ? {
+          analogy: "A number-guessing elevator",
+          move: "Compare the target with the current floor.",
+          result: "One entire side of the tree becomes impossible.",
+        }
+      : world.kind === "graph"
+        ? {
+            analogy: "A first-come, first-served rescue line",
+            move: "Remove the queue front and add its new neighbors to the back.",
+            result: "The graph is explored one distance layer at a time.",
+          }
+        : world.kind === "dijkstra"
+          ? {
+              analogy: "A delivery board with changing travel estimates",
+              move: "Lock the reachable location with the cheapest total cost.",
+              result: "That shortest cost becomes final and may improve neighbors.",
+            }
+          : world.kind === "greedy"
+            ? {
+                analogy: "Packing the most meetings into one day",
+                move: "Choose the compatible meeting that ends earliest.",
+                result: "Finishing sooner preserves more room for future meetings.",
+              }
+            : world.kind === "dp"
+              ? {
+                  analogy: "Building new energy cells from saved cells",
+                  move: "Read two cached answers instead of solving them again.",
+                  result: "Store the new answer so later cells can reuse it.",
+                }
+              : world.kind === "sortlab"
+                ? {
+                    analogy: "Six machines that organize the same cargo differently",
+                    move: "Perform the defining movement of the current sorting method.",
+                    result: "Notice what data moves and what work the method avoids.",
+                  }
+                : world.kind === "dfs"
+                  ? {
+                      analogy: "Exploring a cave with a trail of return points",
+                      move: "Go deeper while a new route exists; otherwise pop back.",
+                      result: "The stack remembers exactly where exploration can resume.",
+                    }
+                  : world.kind === "mst"
+                    ? {
+                        analogy: "Wiring every station with minimum cable",
+                        move: "Inspect cables cheapest-first and reject loops.",
+                        result: "All stations connect without paying for redundant cycles.",
+                      }
+                    : world.kind === "huffman"
+                      ? {
+                          analogy: "Giving frequent signals shorter control codes",
+                          move: "Repeatedly fuse the two least frequent signals.",
+                          result: "Rare signals sink deeper while common signals stay near the root.",
+                        }
+                      : null;
   const moveCoach =
     world.kind === "binary"
       ? `The middle value is ${pivotValue}. Compare it to ${binaryChallenge.target}, then cut the half that cannot win.`
@@ -2369,8 +2474,8 @@ function MiniGameWorld({
                 ? dijkstraStep / DIJKSTRA_STEPS.length
                 : world.kind === "greedy"
                   ? greedyStep / GREEDY_ORDER.length
-                  : world.kind === "dp"
-                    ? dpIndex / DP_VALUES.length
+                    : world.kind === "dp"
+                    ? (dpIndex - 2) / (DP_VALUES.length - 2)
                     : world.kind === "sortlab"
                       ? sortLabStep / SORTLAB_MISSIONS.length
                       : world.kind === "dfs"
@@ -2466,6 +2571,24 @@ function MiniGameWorld({
             <span>MAKE THE RULE MOVE</span>
             <p>{moveCoach}</p>
           </div>
+          {conceptBridge && (
+            <div className="concept-bridge" aria-label="How the game represents the algorithm">
+              <div>
+                <small>PICTURE IT</small>
+                <strong>{conceptBridge.analogy}</strong>
+              </div>
+              <ArrowRight size={19} />
+              <div>
+                <small>YOUR MOVE</small>
+                <strong>{conceptBridge.move}</strong>
+              </div>
+              <ArrowRight size={19} />
+              <div>
+                <small>ALGORITHM EFFECT</small>
+                <strong>{conceptBridge.result}</strong>
+              </div>
+            </div>
+          )}
 
           {world.kind === "binary" && (
             <section className="binary-game" aria-label="Binary search scanner">
@@ -2609,6 +2732,32 @@ function MiniGameWorld({
 
           {world.kind === "tree" && (
             <section className="tree-mini-game" aria-label="Binary search tree branch finder">
+              <div className="tree-comparison-console">
+                <div>
+                  <small>TARGET</small>
+                  <strong>{treeChallenge.target}</strong>
+                </div>
+                <span>compare with</span>
+                <div>
+                  <small>CURRENT NODE</small>
+                  <strong>{currentTreeNode}</strong>
+                </div>
+                <div className="comparison-result">
+                  {treeChallenge.target < currentTreeNode ? (
+                    <>
+                      <ArrowLeft size={20} />
+                      <strong>Target is smaller</strong>
+                      <span>Follow the smaller-value branch.</span>
+                    </>
+                  ) : (
+                    <>
+                      <ArrowRight size={20} />
+                      <strong>Target is larger</strong>
+                      <span>Follow the larger-value branch.</span>
+                    </>
+                  )}
+                </div>
+              </div>
               <div className="path-chip-row">
                 <span>START 50</span>
                 {treeChallenge.path.slice(1, treeStep + 1).map((step) => (
@@ -2687,6 +2836,10 @@ function MiniGameWorld({
                 <strong>Visit the station waiting at the front of the queue.</strong>
               </div>
               <div className="graph-network">
+                <div className="bfs-level level-zero">DISTANCE 0</div>
+                <div className="bfs-level level-one">DISTANCE 1</div>
+                <div className="bfs-level level-two">DISTANCE 2</div>
+                <div className="bfs-level level-three">DISTANCE 3</div>
                 <svg
                   className="graph-lines"
                   viewBox="0 0 100 100"
@@ -2697,8 +2850,8 @@ function MiniGameWorld({
                     <line
                       key={`${from}-${to}`}
                       {...insetLine(
-                        GRAPH_NODE_POSITIONS[from],
-                        GRAPH_NODE_POSITIONS[to],
+                        GRAPH_POSITIONS[from],
+                        GRAPH_POSITIONS[to],
                         6,
                       )}
                     />
@@ -2725,8 +2878,21 @@ function MiniGameWorld({
                   </button>
                 ))}
               </div>
-              <div className="queue-strip">
-                Queue: {bfsQueue.join(" → ") || "empty"}
+              <div className="queue-machine">
+                <span className="queue-label">FRONT</span>
+                <div className="queue-cells">
+                  {bfsQueue.length > 0 ? (
+                    bfsQueue.map((node, index) => (
+                      <span className={index === 0 ? "front" : ""} key={node}>
+                        <small>{index === 0 ? "NEXT" : "WAIT"}</small>
+                        {node}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="queue-empty">QUEUE EMPTY</span>
+                  )}
+                </div>
+                <span className="queue-label">BACK</span>
               </div>
               <p>
                 Bright yellow is the front. Blue stations are waiting behind it.
@@ -2751,6 +2917,23 @@ function MiniGameWorld({
                   Compare only the white frontier circles. Lock the smallest
                   total cost; gray circles are not reachable yet.
                 </span>
+              </div>
+              <div className="frontier-tray">
+                <div>
+                  <small>COMPARE THE FRONTIER</small>
+                  <strong>Only these tentative totals can be locked now.</strong>
+                </div>
+                <div>
+                  {currentDijkstra.frontier.map((route) => {
+                    const [node, cost] = route.split(":");
+                    return (
+                      <span key={node}>
+                        <small>{node}</small>
+                        <strong>{cost}</strong>
+                      </span>
+                    );
+                  })}
+                </div>
               </div>
               <div className="weighted-map">
                 <svg
@@ -2809,6 +2992,17 @@ function MiniGameWorld({
                   valid choices, the one ending earliest leaves the most room.
                 </span>
               </div>
+              <div className="greedy-cursor">
+                <div>
+                  <small>SCHEDULE IS FREE AFTER</small>
+                  <strong>{lastGreedyFinish}:00</strong>
+                </div>
+                <ArrowRight size={22} />
+                <p>
+                  Ignore meetings beginning before this time. From the remaining
+                  meetings, choose the one ending earliest.
+                </p>
+              </div>
               <div className="schedule-wall">
               <div className="timeline-scale">
                   {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].map((tick) => (
@@ -2851,45 +3045,71 @@ function MiniGameWorld({
           {world.kind === "dp" && (
             <section className="dp-mini-game" aria-label="Dynamic programming memo forge">
               <div className="plain-language-goal">
-                <strong>Do not recalculate old answers.</strong>
+                <strong>Build a sequence one saved answer at a time.</strong>
                 <span>
-                  Read the two saved cells named in the formula, add them, and
-                  store the result in the glowing empty cell.
+                  Fibonacci starts with 0 and 1. Every new cell is the sum of
+                  the two cells immediately before it.
                 </span>
               </div>
-              <div className="memo-equation">
-                <small>BUILD RULE</small>
-                <strong>
-                  fib({dpIndex}) = fib({Math.max(0, dpIndex - 1)}) + fib({Math.max(0, dpIndex - 2)})
-                </strong>
-              </div>
-              <div className="dp-helper">
-                <span>
-                  Saved fib({Math.max(0, dpIndex - 1)}) =
-                  <strong>{DP_VALUES[Math.max(0, dpIndex - 1)]}</strong>
-                </span>
-                <span>+</span>
-                <span>
-                  Saved fib({Math.max(0, dpIndex - 2)}) =
+              <div className="fibonacci-story">
+                <div className="fib-source source-old">
+                  <small>TWO STEPS BACK</small>
                   <strong>{DP_VALUES[Math.max(0, dpIndex - 2)]}</strong>
-                </span>
-                <span>= ?</span>
+                  <span>fib({Math.max(0, dpIndex - 2)})</span>
+                </div>
+                <div className="fib-flow">
+                  <span>+</span>
+                  <ArrowRight size={28} />
+                </div>
+                <div className="fib-source source-new">
+                  <small>ONE STEP BACK</small>
+                  <strong>{DP_VALUES[Math.max(0, dpIndex - 1)]}</strong>
+                  <span>fib({Math.max(0, dpIndex - 1)})</span>
+                </div>
+                <div className="fib-flow">
+                  <span>=</span>
+                  <ArrowRight size={28} />
+                </div>
+                <div className="fib-target-cell">
+                  <small>NEW SAVED CELL</small>
+                  <strong>?</strong>
+                  <span>fib({dpIndex})</span>
+                </div>
+              </div>
+              <div className="memo-equation friendly-equation">
+                <small>READ IT OUT LOUD</small>
+                <strong>
+                  {DP_VALUES[Math.max(0, dpIndex - 2)]} +{" "}
+                  {DP_VALUES[Math.max(0, dpIndex - 1)]} = ?
+                </strong>
+                <p>
+                  We already solved both smaller cells. Dynamic programming
+                  reuses them instead of starting over.
+                </p>
               </div>
               <div className="memo-forge">
                 <div className="forge-core"><span>CACHE</span></div>
                 <div className="memo-row">
                   {dpVisible.map(({ value, visible, active }, index) => (
-                    <span className={active ? "active" : ""} key={index}>
+                    <span
+                      className={[
+                        active ? "active" : "",
+                        index === dpIndex - 1 || index === dpIndex - 2
+                          ? "source"
+                          : "",
+                      ].join(" ")}
+                      key={index}
+                    >
                       <small>fib({index})</small>
-                      <strong>{visible ? value : active ? "?" : "locked"}</strong>
+                      <strong>{visible ? value : active ? "?" : "later"}</strong>
                     </span>
                   ))}
                 </div>
               </div>
-              <div className="mini-actions">
+              <div className="mini-actions dp-actions">
                 {dpChoices.map((value) => (
                   <button type="button" disabled={complete} key={value} onClick={() => chooseDp(value)}>
-                    Fill {value}
+                    Save {value}
                   </button>
                 ))}
               </div>
