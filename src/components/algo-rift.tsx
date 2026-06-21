@@ -1,46 +1,27 @@
 "use client";
 
-import type { User } from "@supabase/supabase-js";
 import {
   ArrowLeft,
   ArrowRight,
   BookOpen,
   Check,
-  Cloud,
-  CloudOff,
   Compass,
-  Eye,
-  EyeOff,
   Github,
-  KeyRound,
-  LockKeyhole,
-  LogIn,
-  LogOut,
-  Mail,
   Map,
   Play,
   RotateCcw,
-  Save,
-  Shield,
   Sparkles,
   Terminal,
   Trophy,
-  UserRound,
 } from "lucide-react";
 import {
   Component,
-  type FormEvent,
   type ReactNode,
   useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
-import {
-  getSupabaseBrowserClient,
-  isSupabaseConfigured,
-  supabaseConfigurationError,
-} from "@/lib/supabase";
 
 type View = "home" | "game" | "world";
 
@@ -69,8 +50,8 @@ class GameErrorBoundary extends Component<
             <span>GAME RECOVERY</span>
             <h1>This board hit an unexpected state.</h1>
             <p>
-              Your saved progress is safe. Reload this game with fresh board
-              state or return to the game library.
+              Reload this game with fresh board state or return to the open
+              game library.
             </p>
             <div>
               <button
@@ -98,8 +79,6 @@ const DEFAULT_PROGRESS: PlayerProgress = {
   xp: 0,
   redlineVisionUnlocked: false,
 };
-const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/;
-const PASSWORD_PATTERN = /^(?=.*[A-Za-z])(?=.*\d).{10,}$/;
 
 type MiniGameKind =
   | "binary"
@@ -303,47 +282,6 @@ function normalizeProgress(value: Partial<PlayerProgress> | null | undefined) {
   };
 }
 
-function getFriendlyAuthError(error: unknown) {
-  const message =
-    error instanceof Error
-      ? error.message
-      : "Authentication failed. Please try again.";
-  const normalized = message.toLowerCase();
-
-  if (
-    normalized.includes("failed to fetch") ||
-    normalized.includes("networkerror")
-  ) {
-    return "AlgoRift could not reach the cloud service. Refresh once and try again.";
-  }
-  if (normalized.includes("invalid api key")) {
-    return "The cloud save key is incorrect. Use NEXT_PUBLIC_SUPABASE_ANON_KEY from the Supabase API settings.";
-  }
-  if (normalized.includes("email address not authorized")) {
-    return "Public confirmation email is not available yet. Guest saves still work on this device.";
-  }
-  if (
-    normalized.includes("user already registered") ||
-    normalized.includes("already been registered")
-  ) {
-    return "That email already has an account. Use Sign in or reset the password.";
-  }
-  if (
-    normalized.includes("duplicate key") ||
-    normalized.includes("database error saving new user")
-  ) {
-    return "That username is already taken. Choose another username.";
-  }
-  if (
-    normalized.includes("rate limit") ||
-    normalized.includes("too many requests")
-  ) {
-    return "Too many account requests were made recently. Wait a few minutes, then try again.";
-  }
-
-  return message;
-}
-
 function BrandMark() {
   return (
     <span className="brand-symbol" aria-hidden="true">
@@ -408,26 +346,7 @@ export function AlgoRift() {
   const [progress, setProgress] = useState(DEFAULT_PROGRESS);
   const [ready, setReady] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [accountOpen, setAccountOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<
-    "signIn" | "signUp" | "forgot" | "recovery"
-  >("signIn");
-  const [authForm, setAuthForm] = useState({
-    username: "",
-    email: "",
-    password: "",
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const [authBusy, setAuthBusy] = useState(false);
-  const [authMessage, setAuthMessage] = useState("");
-  const [authError, setAuthError] = useState("");
-  const [user, setUser] = useState<User | null>(null);
-  const [username, setUsername] = useState("");
   const [selectedWorldLevel, setSelectedWorldLevel] = useState(1);
-  const [cloudHydrated, setCloudHydrated] = useState(false);
-  const [cloudStatus, setCloudStatus] = useState<
-    "local" | "loading" | "saving" | "saved" | "error"
-  >(isSupabaseConfigured ? "loading" : "local");
   const pageTop = useRef<HTMLDivElement>(null);
   const progressRef = useRef(progress);
 
@@ -454,147 +373,7 @@ export function AlgoRift() {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
   }, [progress, ready]);
 
-  useEffect(() => {
-    if (!ready) return;
-    const maybeClient = getSupabaseBrowserClient();
-    if (!maybeClient) return;
-    const client = maybeClient;
-    let active = true;
-
-    async function hydrateAccount(nextUser: User | null) {
-      if (!active) return;
-      setUser(nextUser);
-      setCloudHydrated(false);
-
-      if (!nextUser) {
-        setUsername("");
-        setCloudStatus("local");
-        return;
-      }
-
-      setCloudStatus("loading");
-      const [profileResult, progressResult] = await Promise.all([
-        client
-          .from("profiles")
-          .select("username")
-          .eq("id", nextUser.id)
-          .maybeSingle(),
-        client
-          .from("game_progress")
-          .select("completed_level, xp, redline_vision_unlocked")
-          .eq("user_id", nextUser.id)
-          .maybeSingle(),
-      ]);
-
-      if (!active) return;
-      if (profileResult.error || progressResult.error) {
-        setCloudStatus("error");
-        setAuthError("Cloud save tables are unavailable. Check the Supabase setup.");
-        return;
-      }
-
-      const fallbackUsername =
-        typeof nextUser.user_metadata?.username === "string"
-          ? nextUser.user_metadata.username
-          : nextUser.email?.split("@")[0] || "pathfinder";
-      setUsername(profileResult.data?.username || fallbackUsername);
-
-      const localProgress = progressRef.current;
-      const cloudProgress = normalizeProgress(
-        progressResult.data
-          ? {
-              completedLevel: progressResult.data.completed_level,
-              xp: progressResult.data.xp,
-              redlineVisionUnlocked:
-                progressResult.data.redline_vision_unlocked,
-            }
-          : null,
-      );
-      const mergedProgress = {
-        completedLevel: Math.max(
-          localProgress.completedLevel,
-          cloudProgress.completedLevel,
-        ),
-        xp: Math.max(localProgress.xp, cloudProgress.xp),
-        redlineVisionUnlocked:
-          localProgress.redlineVisionUnlocked ||
-          cloudProgress.redlineVisionUnlocked,
-      };
-
-      const { error: saveError } = await client
-        .from("game_progress")
-        .upsert(
-          {
-            user_id: nextUser.id,
-            completed_level: mergedProgress.completedLevel,
-            xp: mergedProgress.xp,
-            redline_vision_unlocked: mergedProgress.redlineVisionUnlocked,
-          },
-          { onConflict: "user_id" },
-        );
-
-      if (!active) return;
-      if (saveError) {
-        setCloudStatus("error");
-        return;
-      }
-      progressRef.current = mergedProgress;
-      setProgress(mergedProgress);
-      setCloudHydrated(true);
-      setCloudStatus("saved");
-    }
-
-    void client.auth.getUser().then(({ data, error }) => {
-      if (!active) return;
-      if (error) {
-        setCloudStatus("error");
-        return;
-      }
-      void hydrateAccount(data.user);
-    });
-
-    const {
-      data: { subscription },
-    } = client.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY") {
-        setAuthMode("recovery");
-        setAccountOpen(true);
-        setAuthMessage("Choose a new password for your account.");
-      }
-      window.setTimeout(() => void hydrateAccount(session?.user ?? null), 0);
-    });
-
-    return () => {
-      active = false;
-      subscription.unsubscribe();
-    };
-  }, [ready]);
-
-  useEffect(() => {
-    const client = getSupabaseBrowserClient();
-    if (!client || !user || !cloudHydrated) return;
-
-    const timer = window.setTimeout(() => {
-      setCloudStatus("saving");
-      void client
-        .from("game_progress")
-        .upsert(
-          {
-            user_id: user.id,
-            completed_level: progress.completedLevel,
-            xp: progress.xp,
-            redline_vision_unlocked: progress.redlineVisionUnlocked,
-          },
-          { onConflict: "user_id" },
-        )
-        .then(({ error }) => setCloudStatus(error ? "error" : "saved"));
-    }, 500);
-    return () => window.clearTimeout(timer);
-  }, [cloudHydrated, progress, user]);
-
-  const displayLevel = Math.max(1, Math.min(worlds.length, progress.completedLevel + 1));
-  const nextPlayableWorld = Math.min(worlds.length, progress.completedLevel + 1);
-  const nextWorld = worlds[nextPlayableWorld - 1] ?? worlds[0];
+  const nextWorld = worlds[0];
   const selectedWorld =
     worlds.find((world) => world.level === selectedWorldLevel) ?? worlds[0];
   const nextMission = {
@@ -612,7 +391,6 @@ export function AlgoRift() {
   }
 
   function startWorld(level: number) {
-    if (level > progress.completedLevel + 1) return;
     setSelectedWorldLevel(level);
     changeView("game");
   }
@@ -646,123 +424,6 @@ export function AlgoRift() {
     setView("home");
   }
 
-  function updateAuthField(
-    field: "username" | "email" | "password",
-    value: string,
-  ) {
-    setAuthForm((current) => ({ ...current, [field]: value }));
-    setAuthError("");
-    setAuthMessage("");
-  }
-
-  async function handleAuthSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const client = getSupabaseBrowserClient();
-    if (!client) {
-      setAuthError(
-        supabaseConfigurationError ||
-          "Cloud accounts are not configured yet.",
-      );
-      return;
-    }
-
-    const email = authForm.email.trim().toLowerCase();
-    const usernameValue = authForm.username.trim().toLowerCase();
-    setAuthBusy(true);
-    setAuthError("");
-    setAuthMessage("");
-
-    try {
-      if (authMode === "forgot") {
-        if (!email) throw new Error("Enter the email address for your account.");
-        const { error } = await client.auth.resetPasswordForEmail(email, {
-          redirectTo: window.location.origin,
-        });
-        if (error) throw error;
-        setAuthMessage("Password reset email sent.");
-        return;
-      }
-
-      if (authMode === "recovery") {
-        if (!PASSWORD_PATTERN.test(authForm.password)) {
-          throw new Error(
-            "Use at least 10 characters with at least one letter and number.",
-          );
-        }
-        const { error } = await client.auth.updateUser({
-          password: authForm.password,
-        });
-        if (error) throw error;
-        setAuthMessage("Password updated.");
-        setAuthMode("signIn");
-        return;
-      }
-
-      if (!email) throw new Error("Enter a valid email address.");
-      if (!PASSWORD_PATTERN.test(authForm.password)) {
-        throw new Error(
-          "Use at least 10 characters with at least one letter and number.",
-        );
-      }
-
-      if (authMode === "signUp") {
-        if (!USERNAME_PATTERN.test(usernameValue)) {
-          throw new Error(
-            "Username must be 3-20 lowercase letters, numbers, or underscores.",
-          );
-        }
-        const { data, error } = await client.auth.signUp({
-          email,
-          password: authForm.password,
-          options: {
-            data: { username: usernameValue },
-            emailRedirectTo: window.location.origin,
-          },
-        });
-        if (error) throw error;
-        setAuthMessage(
-          data.session
-            ? "Account created. Cloud sync is active."
-            : "Account created. Check your email to confirm it.",
-        );
-      } else {
-        const { error } = await client.auth.signInWithPassword({
-          email,
-          password: authForm.password,
-        });
-        if (error) throw error;
-        setAuthMessage("Signed in. Cloud progress is syncing.");
-        window.setTimeout(() => setAccountOpen(false), 650);
-      }
-      setAuthForm((current) => ({ ...current, password: "" }));
-    } catch (error) {
-      setAuthError(getFriendlyAuthError(error));
-    } finally {
-      setAuthBusy(false);
-    }
-  }
-
-  async function signOut() {
-    const client = getSupabaseBrowserClient();
-    if (!client) return;
-    setAuthBusy(true);
-    const { error } = await client.auth.signOut();
-    setAuthBusy(false);
-    if (error) {
-      setAuthError(error.message);
-      return;
-    }
-    const freshProgress = { ...DEFAULT_PROGRESS };
-    progressRef.current = freshProgress;
-    setProgress(freshProgress);
-    window.localStorage.removeItem(STORAGE_KEY);
-    setSelectedWorldLevel(1);
-    setView("home");
-    setAccountOpen(false);
-    setCloudHydrated(false);
-    setCloudStatus("local");
-  }
-
   return (
     <div className="game-app" ref={pageTop}>
       <header className="game-header">
@@ -787,66 +448,17 @@ export function AlgoRift() {
         </nav>
 
         <div className="header-actions">
-          <button
-            type="button"
-            className={`account-button ${user ? "signed-in" : ""}`}
-            onClick={() => {
-              setAccountOpen(true);
-              setAuthError("");
-              setAuthMessage("");
-            }}
-            aria-label={
-              user ? `Open account for ${username}` : "Sign in or create account"
-            }
-          >
-            {user ? <Cloud size={17} /> : <UserRound size={17} />}
-            <span>{user ? username || "Account" : "Account"}</span>
-          </button>
-          {user && (
-            <button
-              type="button"
-              className="header-signout"
-              onClick={() => void signOut()}
-              disabled={authBusy}
-              aria-label="Sign out and restart as a guest from Game 1"
-            >
-              <LogOut size={16} />
-              <span>Sign out</span>
-            </button>
-          )}
           <div
             className="header-progress"
-            aria-label={`${progress.completedLevel} of ${worlds.length} games mastered`}
+            aria-label={`${worlds.length} games available`}
           >
-            <span>{progress.completedLevel}/{worlds.length}</span>
+            <span>{worlds.length} open</span>
             <i>
-              <b style={{ width: `${(progress.completedLevel / worlds.length) * 100}%` }} />
+              <b style={{ width: "100%" }} />
             </i>
           </div>
         </div>
       </header>
-
-      {accountOpen && (
-        <AccountDialog
-          authBusy={authBusy}
-          authError={authError}
-          authForm={authForm}
-          authMessage={authMessage}
-          authMode={authMode}
-          cloudStatus={cloudStatus}
-          displayLevel={displayLevel}
-          progress={progress}
-          showPassword={showPassword}
-          user={user}
-          username={username}
-          onClose={() => setAccountOpen(false)}
-          onModeChange={setAuthMode}
-          onPasswordVisibility={() => setShowPassword((shown) => !shown)}
-          onSignOut={() => void signOut()}
-          onSubmit={handleAuthSubmit}
-          onUpdateField={updateAuthField}
-        />
-      )}
 
       {view === "home" && (
         <>
@@ -863,12 +475,10 @@ export function AlgoRift() {
                 <button
                   className="game-primary"
                   type="button"
-                  onClick={() => startWorld(nextPlayableWorld)}
+                  onClick={() => startWorld(1)}
                 >
                   <Play size={18} fill="currentColor" />
-                  {progress.completedLevel >= worlds.length
-                    ? "Replay final game"
-                    : `Continue: ${nextWorld.title}`}
+                  Start Game 1
                 </button>
                 <button
                   className="quiet-button"
@@ -894,9 +504,9 @@ export function AlgoRift() {
                 <strong>{nextWorld.topics}</strong>
                 <p>{nextWorld.description}</p>
                 <div className="compact-progress">
-                  <span>{progress.completedLevel} of {worlds.length} mastered</span>
+                  <span>All {worlds.length} games are open</span>
                   <i>
-                    <b style={{ width: `${(progress.completedLevel / worlds.length) * 100}%` }} />
+                    <b style={{ width: "100%" }} />
                   </i>
                 </div>
               </div>
@@ -906,15 +516,13 @@ export function AlgoRift() {
           <section className="home-path-preview" aria-label="Algorithm learning path">
             {worlds.map((world) => {
               const mastered = progress.completedLevel >= world.level;
-              const current = world.level === nextPlayableWorld;
               return (
                 <button
                   type="button"
                   key={world.level}
-                  className={[mastered ? "mastered" : "", current ? "current" : ""].join(" ")}
-                  disabled={world.level > progress.completedLevel + 1}
+                  className={mastered ? "mastered" : ""}
                   onClick={() => startWorld(world.level)}
-                  aria-label={`${world.title}: ${mastered ? "mastered" : current ? "play next" : "locked"}`}
+                  aria-label={`${world.title}: ${mastered ? "cleared" : "available"}`}
                 >
                   <span>{mastered ? <Check size={15} /> : world.level}</span>
                   <small>{world.topics}</small>
@@ -951,12 +559,10 @@ export function AlgoRift() {
                 <button
                   className="game-primary"
                   type="button"
-                  onClick={() => startWorld(nextPlayableWorld)}
+                  onClick={() => startWorld(1)}
                 >
                   <Play size={18} fill="currentColor" />
-                  {progress.completedLevel >= worlds.length
-                    ? `Replay Game ${worlds.length}`
-                    : `Start Game ${nextPlayableWorld}`}
+                  Start any game
                 </button>
                 <button
                   className="game-secondary"
@@ -969,11 +575,11 @@ export function AlgoRift() {
               <div className="first-mission">
                 <span className="mission-number">{nextMission.label}</span>
                 <div>
-                  <small>NEXT MINI-GAME</small>
+                  <small>OPEN LIBRARY</small>
                   <strong>{nextMission.title}</strong>
                   <span>{nextMission.topics}</span>
                 </div>
-                <span className="mission-reward">{nextMission.reward}</span>
+                  <span className="mission-reward">12 games open</span>
               </div>
             </div>
 
@@ -1023,9 +629,9 @@ export function AlgoRift() {
               <article>
                 <span className="step-icon"><Check size={22} /></span>
                 <div>
-                  <small>MASTER</small>
-                  <h3>Clear the next concept</h3>
-                  <p>Progress from easier patterns toward harder algorithm design.</p>
+                  <small>EXPLORE</small>
+                  <h3>Choose any concept</h3>
+                  <p>Jump into any board whenever you want to practice it.</p>
                 </div>
               </article>
             </div>
@@ -1069,28 +675,22 @@ export function AlgoRift() {
           <section className="home-progress">
             <div>
               <span className="section-label">
-                <Compass size={15} /> Campaign progress
+                <Compass size={15} /> Open curriculum
               </span>
               <h2>
-                {progress.completedLevel === 0
-                  ? "Game 1 is ready."
-                  : progress.completedLevel >= worlds.length
-                    ? "All current games are mastered."
-                    : `Game ${progress.completedLevel + 1} is unlocked.`}
+                All games are playable.
               </h2>
               <p>
-                {user
-                  ? `Signed in as ${username || "Pathfinder"}. Progress syncs to your private cloud row.`
-                  : "Play immediately as a guest or create an account for cloud saves."}
+                No account or cloud database is required. Pick any algorithm and start playing.
               </p>
             </div>
             <div className="progress-card">
               <div className="progress-card-top">
-                <span>CAMPAIGN</span>
-                <strong>{progress.completedLevel} / {worlds.length}</strong>
+                <span>LIBRARY</span>
+                <strong>{worlds.length} / {worlds.length}</strong>
               </div>
               <div className="campaign-track">
-                <span style={{ width: `${(progress.completedLevel / worlds.length) * 100}%` }} />
+                <span style={{ width: "100%" }} />
               </div>
               <button type="button" onClick={() => changeView("world")}>
                 Open game library <ArrowRight size={16} />
@@ -1118,16 +718,16 @@ export function AlgoRift() {
         <main className="world-view">
           <div className="world-heading curriculum-heading">
             <div>
-              <span className="section-label"><Map size={15} /> Your progress</span>
+              <span className="section-label"><Map size={15} /> Open curriculum</span>
               <h1>Pick your next algorithm game</h1>
               <p>
                 Each card is a different toy box: scan, swap, route, schedule,
-                or forge the rule until it clicks.
+                or forge the rule until it clicks. Everything is available.
               </p>
             </div>
             <div className="world-summary">
-              <strong>{progress.completedLevel} / {worlds.length}</strong>
-              <span>games mastered</span>
+              <strong>{worlds.length} / {worlds.length}</strong>
+              <span>games open</span>
             </div>
           </div>
 
@@ -1149,8 +749,8 @@ export function AlgoRift() {
             <article>
               <span>3</span>
               <div>
-                <strong>Unlock harder ideas</strong>
-                <p>Search and sorting lead toward graphs, greedy choices, and DP.</p>
+                <strong>Pick freely</strong>
+                <p>Follow the suggested order or jump straight to a hard topic.</p>
               </div>
             </article>
           </section>
@@ -1158,44 +758,34 @@ export function AlgoRift() {
           <section className="path-status" aria-label="Progression summary">
             <div>
               <Trophy size={18} />
-              <span><strong>{progress.completedLevel}</strong> mastered</span>
+              <span><strong>{worlds.length}</strong> games available</span>
             </div>
             <div className="path-status-track">
-              <span style={{ width: `${(progress.completedLevel / worlds.length) * 100}%` }} />
+              <span style={{ width: "100%" }} />
             </div>
             <span>
-              {progress.completedLevel >= worlds.length ? (
-                <strong>Campaign complete</strong>
-              ) : (
-                <>Next: <strong>{nextWorld.title}</strong></>
-              )}
+              Suggested start: <strong>{nextWorld.title}</strong>
             </span>
           </section>
 
           <section className="world-path mini-game-library">
             {worlds.map((world) => {
               const complete = progress.completedLevel >= world.level;
-              const playable = world.level <= progress.completedLevel + 1;
-              const recommended =
-                !complete && world.level === progress.completedLevel + 1;
               return (
                 <article
                   className={[
                     "world-level",
                     `world-${world.color}`,
                     complete ? "complete" : "",
-                    playable ? "available" : "locked",
-                    recommended ? "recommended" : "",
+                    "available",
                   ].join(" ")}
                   key={world.level}
                 >
                   <div className="level-node">
                     {complete ? (
                       <Check size={20} />
-                    ) : playable ? (
-                      world.level
                     ) : (
-                      <LockKeyhole size={18} />
+                      world.level
                     )}
                   </div>
                   <div className="level-card path-card">
@@ -1207,10 +797,8 @@ export function AlgoRift() {
                       <span>GAME {world.level}</span>
                       <span>
                         {complete
-                          ? "MASTERED"
-                          : recommended
-                            ? "PLAY NEXT"
-                            : "LOCKED"}
+                          ? "CLEARED"
+                          : "PLAY ANYTIME"}
                       </span>
                     </div>
                     <small>{world.realm}</small>
@@ -1224,17 +812,10 @@ export function AlgoRift() {
                       <Terminal size={15} />
                       <span>{world.lesson}</span>
                     </div>
-                    {playable ? (
-                      <button type="button" onClick={() => startWorld(world.level)}>
-                        {complete ? "Replay mini-game" : "Start mini-game"}
-                        <ArrowRight size={16} />
-                      </button>
-                    ) : (
-                      <span className="unlock-note">
-                        <LockKeyhole size={14} />
-                        Master Game {world.level - 1} first
-                      </span>
-                    )}
+                    <button type="button" onClick={() => startWorld(world.level)}>
+                      {complete ? "Replay mini-game" : "Start mini-game"}
+                      <ArrowRight size={16} />
+                    </button>
                   </div>
                 </article>
               );
@@ -1254,7 +835,7 @@ export function AlgoRift() {
               type="button"
               onClick={() => setShowResetConfirm(true)}
             >
-              Reset my progress
+              Clear local clears
             </button>
           </div>
 
@@ -1269,8 +850,8 @@ export function AlgoRift() {
                 <span>RESET SAVE DATA?</span>
                 <h2>Return to Game 1</h2>
                 <p>
-                  This removes earned XP and completed games
-                  {user ? " from this account and device" : " from this device"}.
+                  This only clears the local completion marks stored in this browser.
+                  It does not involve a database or account.
                 </p>
                 <div className="result-actions">
                   <button
@@ -1307,9 +888,7 @@ export function AlgoRift() {
             Designed and developed by <strong>Immanuel Gnanaseelan</strong>
           </p>
           <div className="footer-links">
-            <span className="footer-security">
-              <Shield size={15} /> Secure cloud saves
-            </span>
+            <span className="footer-security">No account required</span>
             <a
               href="https://github.com/immanuelgn/AlgoRift"
               target="_blank"
@@ -3477,11 +3056,7 @@ function MiniGameWorld({
           <div className="canvas-complete" role="dialog" aria-label={`${world.title} complete`}>
             <div>
               <span>GAME {world.level} CLEAR</span>
-              <h2>
-                {world.level >= worlds.length
-                  ? "Campaign mastered."
-                  : "Next game unlocked."}
-              </h2>
+              <h2>Algorithm cleared.</h2>
               <p>
                 You cleared {world.topics} by playing its core rule, not by
                 memorizing a definition.
@@ -3489,9 +3064,7 @@ function MiniGameWorld({
               <div className="canvas-complete-stats">
                 <strong>GAME {world.level}</strong>
                 <strong>{world.gameType}</strong>
-                <strong>
-                  {world.level >= worlds.length ? "MASTERED" : "UNLOCKED"}
-                </strong>
+                <strong>CLEARED</strong>
               </div>
               <button type="button" onClick={onExit}>
                 Return to game library <ArrowRight size={17} />
@@ -3501,275 +3074,5 @@ function MiniGameWorld({
         )}
       </section>
     </main>
-  );
-}
-
-type AccountDialogProps = {
-  authBusy: boolean;
-  authError: string;
-  authForm: { username: string; email: string; password: string };
-  authMessage: string;
-  authMode: "signIn" | "signUp" | "forgot" | "recovery";
-  cloudStatus: "local" | "loading" | "saving" | "saved" | "error";
-  displayLevel: number;
-  progress: PlayerProgress;
-  showPassword: boolean;
-  user: User | null;
-  username: string;
-  onClose: () => void;
-  onModeChange: (mode: AccountDialogProps["authMode"]) => void;
-  onPasswordVisibility: () => void;
-  onSignOut: () => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
-  onUpdateField: (
-    field: "username" | "email" | "password",
-    value: string,
-  ) => void;
-};
-
-function AccountDialog({
-  authBusy,
-  authError,
-  authForm,
-  authMessage,
-  authMode,
-  cloudStatus,
-  displayLevel,
-  progress,
-  showPassword,
-  user,
-  username,
-  onClose,
-  onModeChange,
-  onPasswordVisibility,
-  onSignOut,
-  onSubmit,
-  onUpdateField,
-}: AccountDialogProps) {
-  return (
-    <div
-      className="result-overlay account-overlay"
-      role="dialog"
-      aria-modal="true"
-      aria-label="AlgoRift account"
-    >
-      <section className="account-card">
-        <button
-          type="button"
-          className="account-close"
-          onClick={onClose}
-          aria-label="Close account"
-        >
-          x
-        </button>
-
-        {user ? (
-          <>
-            <div className="account-identity">
-              <span className="account-avatar"><UserRound size={25} /></span>
-              <div>
-                <small>CLOUD PATHFINDER</small>
-                <h2>{username || "Pathfinder"}</h2>
-                <p>{user.email}</p>
-              </div>
-            </div>
-
-            <div className={`cloud-save-state state-${cloudStatus}`}>
-              {cloudStatus === "error" ? (
-                <CloudOff size={18} />
-              ) : cloudStatus === "saving" || cloudStatus === "loading" ? (
-                <Cloud size={18} />
-              ) : (
-                <Save size={18} />
-              )}
-              <div>
-                <strong>
-                  {cloudStatus === "saving"
-                    ? "Saving progress..."
-                    : cloudStatus === "loading"
-                      ? "Loading cloud save..."
-                      : cloudStatus === "error"
-                        ? "Cloud sync needs attention"
-                        : "Progress saved"}
-                </strong>
-                <span>
-                  Level {displayLevel} - {progress.xp} XP - private to this account
-                </span>
-              </div>
-            </div>
-
-            <div className="account-security-note">
-              <Shield size={18} />
-              Passwords are handled by Supabase Auth and are never stored by AlgoRift.
-            </div>
-            <button
-              className="game-secondary account-signout"
-              type="button"
-              onClick={onSignOut}
-              disabled={authBusy}
-            >
-              <LogOut size={17} /> Sign out
-            </button>
-          </>
-        ) : (
-          <>
-            <div className="account-heading">
-              <span className="account-avatar">
-                {authMode === "signUp" ? (
-                  <Sparkles size={25} />
-                ) : (
-                  <KeyRound size={25} />
-                )}
-              </span>
-              <div>
-                <small>OPTIONAL CLOUD SAVE</small>
-                <h2>
-                  {authMode === "signUp"
-                    ? "Create your Pathfinder"
-                    : authMode === "forgot"
-                      ? "Reset your password"
-                      : authMode === "recovery"
-                        ? "Choose a new password"
-                        : "Welcome back"}
-                </h2>
-              </div>
-            </div>
-
-            {!isSupabaseConfigured && (
-              <div className="auth-message auth-warning">
-                {supabaseConfigurationError ||
-                  "Cloud accounts are not configured. Guest saves still work."}
-              </div>
-            )}
-
-            <form className="auth-form" onSubmit={onSubmit}>
-              {authMode === "signUp" && (
-                <label>
-                  <span>Username</span>
-                  <div className="auth-input">
-                    <UserRound size={17} />
-                    <input
-                      type="text"
-                      value={authForm.username}
-                      onChange={(event) =>
-                        onUpdateField("username", event.target.value)
-                      }
-                      placeholder="pathfinder_01"
-                      autoComplete="username"
-                      minLength={3}
-                      maxLength={20}
-                      pattern="[a-z0-9_]{3,20}"
-                      required
-                    />
-                  </div>
-                  <small>3-20 lowercase letters, numbers, or underscores.</small>
-                </label>
-              )}
-
-              {authMode !== "recovery" && (
-                <label>
-                  <span>Email</span>
-                  <div className="auth-input">
-                    <Mail size={17} />
-                    <input
-                      type="email"
-                      value={authForm.email}
-                      onChange={(event) =>
-                        onUpdateField("email", event.target.value)
-                      }
-                      placeholder="you@example.com"
-                      autoComplete="email"
-                      required
-                    />
-                  </div>
-                  {authMode === "signUp" && (
-                    <small>A confirmation email is required before sign in.</small>
-                  )}
-                </label>
-              )}
-
-              {authMode !== "forgot" && (
-                <label>
-                  <span>
-                    {authMode === "recovery" ? "New password" : "Password"}
-                  </span>
-                  <div className="auth-input">
-                    <KeyRound size={17} />
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      value={authForm.password}
-                      onChange={(event) =>
-                        onUpdateField("password", event.target.value)
-                      }
-                      placeholder="10+ characters"
-                      autoComplete={
-                        authMode === "signUp" || authMode === "recovery"
-                          ? "new-password"
-                          : "current-password"
-                      }
-                      minLength={10}
-                      pattern="(?=.*[A-Za-z])(?=.*\d).{10,}"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={onPasswordVisibility}
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                    >
-                      {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
-                    </button>
-                  </div>
-                  <small>Use 10+ characters with at least one letter and number.</small>
-                </label>
-              )}
-
-              {authError && <div className="auth-message auth-error">{authError}</div>}
-              {authMessage && (
-                <div className="auth-message auth-success">{authMessage}</div>
-              )}
-
-              <button
-                className="game-primary auth-submit"
-                type="submit"
-                disabled={authBusy || !isSupabaseConfigured}
-              >
-                {authBusy ? (
-                  "Working..."
-                ) : authMode === "signUp" ? (
-                  <><Sparkles size={17} /> Create account</>
-                ) : authMode === "forgot" ? (
-                  <><Mail size={17} /> Send reset email</>
-                ) : authMode === "recovery" ? (
-                  <><Shield size={17} /> Update password</>
-                ) : (
-                  <><LogIn size={17} /> Sign in</>
-                )}
-              </button>
-            </form>
-
-            <div className="auth-switches">
-              {authMode === "signIn" && (
-                <>
-                  <button type="button" onClick={() => onModeChange("signUp")}>
-                    Create an account
-                  </button>
-                  <button type="button" onClick={() => onModeChange("forgot")}>
-                    Forgot password?
-                  </button>
-                </>
-              )}
-              {(authMode === "signUp" || authMode === "forgot") && (
-                <button type="button" onClick={() => onModeChange("signIn")}>
-                  Back to sign in
-                </button>
-              )}
-            </div>
-            <p className="guest-note">
-              Accounts are optional. Guest progress remains on this device.
-            </p>
-          </>
-        )}
-      </section>
-    </div>
   );
 }

@@ -3,14 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { AlgoRift } from "./algo-rift";
 
-const progress = {
-  completedLevel: 12,
-  xp: 5000,
-  redlineVisionUnlocked: true,
-};
-
 async function openGame(title: string) {
-  window.localStorage.setItem("algorift-progress-v2", JSON.stringify(progress));
+  window.localStorage.clear();
   const user = userEvent.setup();
   render(<AlgoRift />);
 
@@ -22,7 +16,7 @@ async function openGame(title: string) {
   expect(card).not.toBeNull();
   await user.click(
     within(card as HTMLElement).getByRole("button", {
-      name: "Replay mini-game",
+      name: /Start mini-game|Replay mini-game/,
     }),
   );
   await screen.findByRole("button", { name: "Restart" });
@@ -30,6 +24,37 @@ async function openGame(title: string) {
 }
 
 describe("advanced game launch and interaction", () => {
+  it("makes every game available without saved progress or an account", async () => {
+    window.localStorage.clear();
+    render(<AlgoRift />);
+
+    const gamesButton = await screen.findByRole("button", { name: "Games" });
+    await userEvent.click(gamesButton);
+
+    for (const world of [
+      "Signal Scanner",
+      "Packet Conveyor",
+      "Memory Elevator",
+      "Branch Finder",
+      "Queue Rescue",
+      "Shortest Route",
+      "Interval Planner",
+      "Memo Forge",
+      "Sorting Arsenal",
+      "Depth Dive",
+      "Grid Architect",
+      "Code Compressor",
+    ]) {
+      const heading = await screen.findByRole("heading", { name: world });
+      const card = heading.closest("article");
+      expect(card).not.toBeNull();
+      const launchButton = within(card as HTMLElement).getByRole("button", {
+        name: /Start mini-game|Replay mini-game/,
+      }) as HTMLButtonElement;
+      expect(launchButton.disabled).toBe(false);
+    }
+  });
+
   it.each([
     ["Branch Finder", "Binary search tree branch finder"],
     ["Queue Rescue", "BFS queue rescue"],
@@ -164,7 +189,7 @@ describe("advanced game launch and interaction", () => {
     const queueCard = queueHeading.closest("article");
     await user.click(
       within(queueCard as HTMLElement).getByRole("button", {
-        name: "Replay mini-game",
+        name: /Start mini-game|Replay mini-game/,
       }),
     );
     expect(await screen.findByLabelText("BFS queue rescue")).toBeTruthy();
