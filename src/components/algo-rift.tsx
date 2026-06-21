@@ -1394,6 +1394,10 @@ const GRAPH_POSITIONS = [
   { x: 35, y: 86 },
   { x: 65, y: 86 },
 ] as const;
+const GRAPH_NODE_POSITIONS: Record<string, { x: number; y: number }> =
+  Object.fromEntries(
+    BFS_CHALLENGES[0].nodes.map((node, index) => [node, GRAPH_POSITIONS[index]]),
+  );
 const TREE_POSITIONS: Record<number, { x: number; y: number }> = {
   50: { x: 50, y: 12 },
   25: { x: 22, y: 38 },
@@ -1436,88 +1440,195 @@ const DIJKSTRA_EDGES = [
   ["E", "G", 3],
   ["F", "G", 2],
 ] as const;
-const SORTLAB_STATIONS = [
+type SortLabMode =
+  | "insert"
+  | "select"
+  | "exchange"
+  | "merge"
+  | "partition"
+  | "heap";
+
+const SORTLAB_MISSIONS: Array<{
+  algorithm: string;
+  mode: SortLabMode;
+  prompt: string;
+  rule: string;
+  options: string[];
+  correct: string;
+  scene: string[];
+  keyValue?: string;
+  pivot?: string;
+}> = [
   {
     algorithm: "Insertion Sort",
-    prompt: "The sorted prefix is [1, 3, 6, 8]. Where should key 4 be inserted?",
-    options: ["After 1", "After 3", "After 6"],
-    correct: "After 3",
-    scene: ["1", "3", "4", "6", "8"],
+    mode: "insert",
+    prompt: "The sorted shelf is [1, 3, 6, 8]. Where does key 4 slide in?",
+    rule: "Shift larger values right until the key fits in the open gap.",
+    options: ["Gap after 1", "Gap after 3", "Gap after 6"],
+    correct: "Gap after 3",
+    scene: ["1", "3", "6", "8"],
+    keyValue: "4",
+  },
+  {
+    algorithm: "Insertion Sort",
+    mode: "insert",
+    prompt: "The sorted shelf is [2, 5, 7, 10]. Where does key 6 slide in?",
+    rule: "Everything left of the gap stays sorted after the key is inserted.",
+    options: ["Gap after 2", "Gap after 5", "Gap after 7"],
+    correct: "Gap after 5",
+    scene: ["2", "5", "7", "10"],
+    keyValue: "6",
   },
   {
     algorithm: "Selection Sort",
-    prompt: "Which value is the minimum of the unsorted region [7, 2, 9, 4]?",
-    options: ["7", "2", "4"],
+    mode: "select",
+    prompt: "The first slot is empty. Spotlight the minimum value in the unsorted yard.",
+    rule: "Selection sort scans the whole unsorted region, then moves its minimum forward.",
+    options: ["7", "2", "9", "4"],
     correct: "2",
     scene: ["7", "2", "9", "4"],
   },
   {
+    algorithm: "Selection Sort",
+    mode: "select",
+    prompt: "The prefix [1, 3] is locked. Which unsorted value should be selected next?",
+    rule: "Ignore the sorted prefix and find the minimum only in the remaining region.",
+    options: ["8", "6", "5", "9"],
+    correct: "5",
+    scene: ["1", "3", "|", "8", "6", "5", "9"],
+  },
+  {
     algorithm: "Exchange Sort",
-    prompt: "Which exchange moves [8, 5, 3, 9] closer to ascending order?",
-    options: ["8 ↔ 3", "5 ↔ 9", "3 ↔ 9"],
-    correct: "8 ↔ 3",
+    mode: "exchange",
+    prompt: "Choose the inversion that moves the smallest value toward the front.",
+    rule: "An inversion is a larger value appearing before a smaller value.",
+    options: ["8 <-> 3", "5 <-> 9", "3 <-> 9"],
+    correct: "8 <-> 3",
     scene: ["8", "5", "3", "9"],
   },
   {
+    algorithm: "Exchange Sort",
+    mode: "exchange",
+    prompt: "Which exchange removes the widest inversion in this row?",
+    rule: "Exchange sort may compare distant values and swap an out-of-order pair.",
+    options: ["6 <-> 1", "2 <-> 5", "5 <-> 1"],
+    correct: "6 <-> 1",
+    scene: ["6", "2", "5", "1"],
+  },
+  {
     algorithm: "Merge Sort",
-    prompt: "Merge heads [2, 7, 9] and [3, 4, 8]. Which value leaves first?",
-    options: ["2", "3", "4"],
+    mode: "merge",
+    prompt: "Two sorted lanes are ready. Which front value enters the output first?",
+    rule: "Compare only the two lane fronts; remove the smaller one.",
+    options: ["2", "3"],
     correct: "2",
     scene: ["2", "7", "9", "|", "3", "4", "8"],
   },
   {
     algorithm: "Merge Sort",
-    prompt: "After 2 leaves, which head is next: 7 or 3?",
-    options: ["7", "3", "9"],
+    mode: "merge",
+    prompt: "After 2 leaves, compare the new lane fronts. Which value enters next?",
+    rule: "A merge never searches the full lanes; their fronts contain the next candidate.",
+    options: ["7", "3"],
     correct: "3",
     scene: ["7", "9", "|", "3", "4", "8"],
   },
   {
     algorithm: "Quick Sort",
-    prompt: "Pivot is 6. Which value belongs in the left partition?",
-    options: ["9", "4", "8"],
-    correct: "4",
+    mode: "partition",
+    prompt: "Route candidate 4 around pivot 6.",
+    rule: "Values smaller than the pivot go left; larger values go right.",
+    options: ["LEFT < 6", "RIGHT > 6", "KEEP AS PIVOT"],
+    correct: "LEFT < 6",
     scene: ["9", "4", "6", "8", "2"],
+    keyValue: "4",
+    pivot: "6",
   },
   {
     algorithm: "Quick Sort",
-    prompt: "Pivot is 6. Which value belongs in the right partition?",
-    options: ["2", "5", "9"],
-    correct: "9",
+    mode: "partition",
+    prompt: "Route candidate 9 around pivot 6.",
+    rule: "Partitioning groups values; it does not fully sort either side yet.",
+    options: ["LEFT < 6", "RIGHT > 6", "KEEP AS PIVOT"],
+    correct: "RIGHT > 6",
     scene: ["2", "5", "6", "9", "7"],
+    keyValue: "9",
+    pivot: "6",
   },
   {
     algorithm: "Heap Sort",
-    prompt: "A max-heap removes its root next. Which value should be extracted?",
-    options: ["12", "7", "4"],
+    mode: "heap",
+    prompt: "Extract the maximum from this max-heap.",
+    rule: "A max-heap keeps its largest value at the root.",
+    options: ["12", "9", "7"],
     correct: "12",
     scene: ["12", "7", "9", "2", "4"],
   },
+  {
+    algorithm: "Heap Sort",
+    mode: "heap",
+    prompt: "Root 5 breaks the heap rule. Which child should rise to repair it?",
+    rule: "During sift-down, swap with the larger child.",
+    options: ["11", "9", "5"],
+    correct: "11",
+    scene: ["5", "11", "9", "3", "7"],
+  },
+];
+
+const DFS_GRAPH_EDGES = [
+  ["A", "B"],
+  ["A", "C"],
+  ["B", "D"],
+  ["B", "E"],
+  ["D", "H"],
+  ["E", "F"],
+  ["C", "F"],
+  ["C", "G"],
+  ["F", "I"],
 ] as const;
-const DFS_ORDER = ["A", "B", "D", "H", "E", "C", "F", "I", "G"];
-const MST_EDGES = [
+const DFS_GRAPH_ADJACENCY = DFS_GRAPH_EDGES.reduce<Record<string, string[]>>(
+  (graph, [from, to]) => {
+    graph[from] = [...(graph[from] ?? []), to];
+    graph[to] = [...(graph[to] ?? []), from];
+    return graph;
+  },
+  {},
+);
+
+const KRUSKAL_EDGES = [
   { from: "A", to: "B", weight: 2 },
-  { from: "B", to: "D", weight: 3 },
+  { from: "B", to: "C", weight: 3 },
   { from: "A", to: "C", weight: 4 },
-  { from: "C", to: "E", weight: 5 },
-  { from: "D", to: "E", weight: 6 },
-  { from: "B", to: "C", weight: 7 },
+  { from: "C", to: "D", weight: 5 },
+  { from: "B", to: "D", weight: 6 },
+  { from: "C", to: "E", weight: 7 },
+  { from: "D", to: "E", weight: 8 },
+  { from: "D", to: "F", weight: 9 },
+  { from: "E", to: "F", weight: 10 },
 ] as const;
-const MST_ORDER = ["A-B", "B-D", "A-C", "C-E"];
-const MST_POSITIONS: Record<string, { x: number; y: number }> = {
-  A: { x: 15, y: 28 },
-  B: { x: 42, y: 14 },
-  C: { x: 48, y: 70 },
-  D: { x: 76, y: 24 },
-  E: { x: 82, y: 72 },
+const KRUSKAL_POSITIONS: Record<string, { x: number; y: number }> = {
+  A: { x: 12, y: 28 },
+  B: { x: 36, y: 12 },
+  C: { x: 38, y: 62 },
+  D: { x: 65, y: 30 },
+  E: { x: 68, y: 76 },
+  F: { x: 90, y: 50 },
 };
-const HUFFMAN_START = [
+
+type HuffmanNode = {
+  id: string;
+  label: string;
+  weight: number;
+  left?: string;
+  right?: string;
+};
+const HUFFMAN_SIGNALS: HuffmanNode[] = [
   { id: "A", label: "A", weight: 2 },
-  { id: "B", label: "B", weight: 3 },
-  { id: "C", label: "C", weight: 5 },
   { id: "D", label: "D", weight: 7 },
+  { id: "B", label: "B", weight: 3 },
   { id: "E", label: "E", weight: 11 },
-] as const;
+  { id: "C", label: "C", weight: 5 },
+];
 
 function insetLine(
   start: { x: number; y: number },
@@ -1539,6 +1650,36 @@ function insetLine(
 
 function isSorted(values: number[]) {
   return values.every((value, index) => index === 0 || values[index - 1] <= value);
+}
+
+function graphEdgeKey(from: string, to: string) {
+  return [from, to].sort().join("-");
+}
+
+function createsKruskalCycle(
+  accepted: string[],
+  candidate: { from: string; to: string },
+) {
+  const graph: Record<string, string[]> = {};
+  for (const edgeId of accepted) {
+    const edge = KRUSKAL_EDGES.find(
+      ({ from, to }) => graphEdgeKey(from, to) === edgeId,
+    );
+    if (!edge) continue;
+    graph[edge.from] = [...(graph[edge.from] ?? []), edge.to];
+    graph[edge.to] = [...(graph[edge.to] ?? []), edge.from];
+  }
+
+  const pending = [candidate.from];
+  const seen = new Set<string>();
+  while (pending.length > 0) {
+    const node = pending.pop();
+    if (!node || seen.has(node)) continue;
+    if (node === candidate.to) return true;
+    seen.add(node);
+    pending.push(...(graph[node] ?? []));
+  }
+  return false;
 }
 
 function MiniGameWorld({
@@ -1564,12 +1705,18 @@ function MiniGameWorld({
   const [greedySelected, setGreedySelected] = useState<string[]>([]);
   const [dpIndex, setDpIndex] = useState(2);
   const [sortLabStep, setSortLabStep] = useState(0);
-  const [dfsStep, setDfsStep] = useState(0);
-  const [mstStep, setMstStep] = useState(0);
-  const [huffmanNodes, setHuffmanNodes] = useState<
-    Array<{ id: string; label: string; weight: number }>
-  >([...HUFFMAN_START]);
+  const [dfsStack, setDfsStack] = useState<string[]>(["A"]);
+  const [dfsVisited, setDfsVisited] = useState<string[]>(["A"]);
+  const [dfsTraversedEdges, setDfsTraversedEdges] = useState<string[]>([]);
+  const [dfsBacktracks, setDfsBacktracks] = useState(0);
+  const [mstCursor, setMstCursor] = useState(0);
+  const [mstAccepted, setMstAccepted] = useState<string[]>([]);
+  const [mstRejected, setMstRejected] = useState<string[]>([]);
+  const [huffmanNodes, setHuffmanNodes] = useState<HuffmanNode[]>([
+    ...HUFFMAN_SIGNALS,
+  ]);
   const [huffmanSelected, setHuffmanSelected] = useState<string[]>([]);
+  const [huffmanHistory, setHuffmanHistory] = useState<HuffmanNode[]>([]);
   const [message, setMessage] = useState(world.lesson);
   const [mistakes, setMistakes] = useState(0);
   const [complete, setComplete] = useState(false);
@@ -1706,10 +1853,16 @@ function MiniGameWorld({
     setGreedySelected([]);
     setDpIndex(2);
     setSortLabStep(0);
-    setDfsStep(0);
-    setMstStep(0);
-    setHuffmanNodes([...HUFFMAN_START]);
+    setDfsStack(["A"]);
+    setDfsVisited(["A"]);
+    setDfsTraversedEdges([]);
+    setDfsBacktracks(0);
+    setMstCursor(0);
+    setMstAccepted([]);
+    setMstRejected([]);
+    setHuffmanNodes([...HUFFMAN_SIGNALS]);
     setHuffmanSelected([]);
+    setHuffmanHistory([]);
     setMessage(world.lesson);
     setMistakes(0);
     setComplete(false);
@@ -1917,67 +2070,142 @@ function MiniGameWorld({
   }
 
   function chooseSortLab(option: string) {
-    const station = SORTLAB_STATIONS[sortLabStep];
+    const station = SORTLAB_MISSIONS[sortLabStep];
     if (option !== station.correct) {
-      miss(`${station.algorithm}: study the operation this algorithm performs, then try again.`);
+      miss(`${station.algorithm}: ${station.rule}`);
       return;
     }
     const nextStep = sortLabStep + 1;
-    reward(station.algorithm);
+    reward(`${station.algorithm} move`);
     setSortLabStep(nextStep);
-    if (nextStep >= SORTLAB_STATIONS.length) {
-      completeMiniGame("Sorting arsenal mastered. Six algorithms reached order through six different strategies.");
+    if (nextStep >= SORTLAB_MISSIONS.length) {
+      completeMiniGame(
+        "Sorting arsenal mastered. You inserted, selected, exchanged, merged, partitioned, and repaired a heap.",
+      );
       return;
     }
-    setMessage(`${station.algorithm} station cleared. Next: ${SORTLAB_STATIONS[nextStep].algorithm}.`);
+    const nextMission = SORTLAB_MISSIONS[nextStep];
+    setMessage(
+      nextMission.algorithm === station.algorithm
+        ? `${station.algorithm} move cleared. One more challenge uses the same rule.`
+        : `${station.algorithm} station cleared. Next workshop: ${nextMission.algorithm}.`,
+    );
   }
 
   function chooseDfs(node: string) {
-    const expected = DFS_ORDER[dfsStep];
-    if (node !== expected) {
-      miss("DFS follows the deepest available unvisited neighbor before backtracking.");
+    const current = dfsStack[dfsStack.length - 1];
+    if (dfsVisited.includes(node)) {
+      miss(`${node} is already visited. DFS never opens the same cavern twice.`);
       return;
     }
-    const nextStep = dfsStep + 1;
+    if (!(DFS_GRAPH_ADJACENCY[current] ?? []).includes(node)) {
+      miss(`${node} is not connected to ${current}. Choose an unvisited neighbor of the active cavern.`);
+      return;
+    }
+    const nextVisited = [...dfsVisited, node];
     reward("Depth advanced");
-    setDfsStep(nextStep);
-    if (nextStep >= DFS_ORDER.length) {
-      completeMiniGame("Cavern mapped with DFS. Deep branches finished before backtracking to alternatives.");
+    setDfsStack((stack) => [...stack, node]);
+    setDfsVisited(nextVisited);
+    setDfsTraversedEdges((edges) => [
+      ...edges,
+      graphEdgeKey(current, node),
+    ]);
+    if (nextVisited.length >= Object.keys(DFS_GRAPH_ADJACENCY).length) {
+      completeMiniGame(
+        "Cavern mapped with DFS. You followed branches deeply, ignored visited loops, and backtracked when paths ended.",
+      );
       return;
     }
-    setMessage(`${node} visited. Continue deeper if possible; backtrack only at a dead end.`);
+    const openNeighbors = (DFS_GRAPH_ADJACENCY[node] ?? []).filter(
+      (neighbor) => !nextVisited.includes(neighbor),
+    );
+    setMessage(
+      openNeighbors.length > 0
+        ? `${node} entered. Keep descending through any unvisited connected cavern.`
+        : `${node} is a dead end. Backtrack to the previous cavern with unfinished paths.`,
+    );
   }
 
-  function chooseMst(edgeId: string) {
-    const expected = MST_ORDER[mstStep];
-    if (edgeId !== expected) {
-      miss("Choose the lightest remaining edge that connects different components without forming a cycle.");
+  function backtrackDfs() {
+    const current = dfsStack[dfsStack.length - 1];
+    const openNeighbors = (DFS_GRAPH_ADJACENCY[current] ?? []).filter(
+      (neighbor) => !dfsVisited.includes(neighbor),
+    );
+    if (openNeighbors.length > 0) {
+      miss(`${current} still has an unvisited route. DFS goes deeper before it backtracks.`);
       return;
     }
-    const nextStep = mstStep + 1;
-    reward("Edge accepted");
-    setMstStep(nextStep);
-    if (nextStep >= MST_ORDER.length) {
-      completeMiniGame("Minimum spanning tree complete. Five stations connected with four cheapest safe edges.");
+    if (dfsStack.length <= 1) {
+      miss("You are already at the entrance. Choose an unvisited connected cavern.");
       return;
     }
-    setMessage(`${edgeId} accepted. Re-scan the remaining edges from lightest to heaviest.`);
+    const previous = dfsStack[dfsStack.length - 2];
+    setDfsStack((stack) => stack.slice(0, -1));
+    setDfsBacktracks((count) => count + 1);
+    reward("Stack popped");
+    setMessage(`Returned to ${previous}. Resume from its next unvisited route.`);
   }
 
-  function chooseHuffman(nodeId: string) {
+  function inspectMstEdge(action: "accept" | "skip") {
+    const edge = KRUSKAL_EDGES[mstCursor];
+    if (!edge) return;
+    const id = graphEdgeKey(edge.from, edge.to);
+    const formsCycle = createsKruskalCycle(mstAccepted, edge);
+    const shouldAccept = !formsCycle;
+    if ((action === "accept") !== shouldAccept) {
+      miss(
+        formsCycle
+          ? `${edge.from}-${edge.to} reconnects stations already linked. Accepting it would create a cycle.`
+          : `${edge.from}-${edge.to} joins two separate components, so skipping it would waste the cheapest safe cable.`,
+      );
+      return;
+    }
+
+    const nextAccepted = shouldAccept ? [...mstAccepted, id] : mstAccepted;
+    if (shouldAccept) {
+      setMstAccepted(nextAccepted);
+      reward("Cable accepted");
+      setMessage(`${edge.from}-${edge.to} joined two components without a cycle.`);
+    } else {
+      setMstRejected((edges) => [...edges, id]);
+      reward("Cycle blocked");
+      setMessage(`${edge.from}-${edge.to} skipped because its endpoints were already connected.`);
+    }
+
+    if (nextAccepted.length >= Object.keys(KRUSKAL_POSITIONS).length - 1) {
+      completeMiniGame(
+        "Minimum spanning tree complete. Every station is connected with five safe cables and no cycle.",
+      );
+      return;
+    }
+    setMstCursor((cursor) => cursor + 1);
+  }
+
+  function selectHuffman(nodeId: string) {
     if (huffmanSelected.includes(nodeId)) {
       setHuffmanSelected((current) => current.filter((id) => id !== nodeId));
       return;
     }
-    const nextSelected = [...huffmanSelected, nodeId];
-    if (nextSelected.length < 2) {
-      setHuffmanSelected(nextSelected);
-      setMessage("One frequency selected. Choose the other smallest remaining frequency.");
+    if (huffmanSelected.length >= 2) {
+      miss("The fusion chamber holds exactly two signals. Deselect one before choosing another.");
       return;
     }
+    const nextSelected = [...huffmanSelected, nodeId];
+    setHuffmanSelected(nextSelected);
+    setMessage(
+      nextSelected.length === 1
+        ? "First signal loaded. Scan every remaining frequency and choose the other minimum."
+        : "Two signals loaded. Fuse them only if they are the two smallest frequencies.",
+    );
+  }
 
+  function mergeHuffman() {
+    if (huffmanSelected.length !== 2) {
+      miss("Load exactly two signals before starting a fusion.");
+      return;
+    }
     const chosen = huffmanNodes
-      .filter((node) => nextSelected.includes(node.id))
+      .filter((node) => huffmanSelected.includes(node.id))
       .sort((left, right) => left.weight - right.weight);
     const twoSmallest = [...huffmanNodes]
       .sort((left, right) => left.weight - right.weight)
@@ -1988,27 +2216,35 @@ function MiniGameWorld({
       chosen[1].id === twoSmallest[1].id;
     if (!correct) {
       setHuffmanSelected([]);
-      miss("Huffman always merges the two smallest frequencies currently available.");
+      miss(
+        `Those are not both minimums. The two smallest visible weights are ${twoSmallest[0].weight} and ${twoSmallest[1].weight}.`,
+      );
       return;
     }
 
-    const merged = {
+    const merged: HuffmanNode = {
       id: `${chosen[0].id}${chosen[1].id}`,
       label: `${chosen[0].label}+${chosen[1].label}`,
       weight: chosen[0].weight + chosen[1].weight,
+      left: chosen[0].id,
+      right: chosen[1].id,
     };
     const nextNodes = huffmanNodes
-      .filter((node) => !nextSelected.includes(node.id))
-      .concat(merged)
-      .sort((left, right) => left.weight - right.weight);
-    reward("Frequencies merged");
+      .filter((node) => !huffmanSelected.includes(node.id))
+      .concat(merged);
+    reward("Signals fused");
     setHuffmanNodes(nextNodes);
     setHuffmanSelected([]);
+    setHuffmanHistory((history) => [...history, merged]);
     if (nextNodes.length === 1) {
-      completeMiniGame("Huffman tree complete. Repeated minimum-frequency merges produced a prefix code.");
+      completeMiniGame(
+        "Huffman tree complete. Rare symbols merged earlier and ended deeper, while frequent symbols stayed closer to the root with shorter codes.",
+      );
       return;
     }
-    setMessage(`${chosen[0].weight} + ${chosen[1].weight} merged into ${merged.weight}. Find the next two minimums.`);
+    setMessage(
+      `${chosen[0].weight} + ${chosen[1].weight} fused into ${merged.weight}. Re-scan the unsorted signal pool for the next two minimums.`,
+    );
   }
 
   const pivotIndex = Math.floor((binaryLow + binaryHigh) / 2);
@@ -2060,14 +2296,21 @@ function MiniGameWorld({
     new Set([dpExpected, Math.max(1, dpExpected - 2), dpExpected + 1, dpExpected + 3]),
   ).sort((left, right) => left - right);
   const currentSortStation =
-    SORTLAB_STATIONS[sortLabStep] ??
-    SORTLAB_STATIONS[SORTLAB_STATIONS.length - 1];
-  const dfsVisible = bfsChallenge.nodes.map((node) => ({
+    SORTLAB_MISSIONS[sortLabStep] ??
+    SORTLAB_MISSIONS[SORTLAB_MISSIONS.length - 1];
+  const currentDfsNode = dfsStack[dfsStack.length - 1];
+  const currentDfsNeighbors = DFS_GRAPH_ADJACENCY[currentDfsNode] ?? [];
+  const dfsVisible = BFS_CHALLENGES[0].nodes.map((node) => ({
     node,
-    done: DFS_ORDER.indexOf(node) < dfsStep,
-    active: DFS_ORDER.indexOf(node) === dfsStep,
+    done: dfsVisited.includes(node) && node !== currentDfsNode,
+    active: node === currentDfsNode,
+    available:
+      !dfsVisited.includes(node) && currentDfsNeighbors.includes(node),
   }));
-  const acceptedMstEdges = MST_ORDER.slice(0, mstStep);
+  const currentMstEdge =
+    KRUSKAL_EDGES[mstCursor] ?? KRUSKAL_EDGES[KRUSKAL_EDGES.length - 1];
+  const currentMstId = graphEdgeKey(currentMstEdge.from, currentMstEdge.to);
+  const mstComponents = Object.keys(KRUSKAL_POSITIONS).length - mstAccepted.length;
   const lastGreedyFinish =
     greedySelected.length > 0
       ? GREEDY_INTERVALS.find(
@@ -2094,12 +2337,12 @@ function MiniGameWorld({
                   : world.kind === "dp"
                     ? `Use cached answers: fib(${visibleDpIndex}) depends on fib(${Math.max(0, visibleDpIndex - 1)}) and fib(${Math.max(0, visibleDpIndex - 2)}).`
                     : world.kind === "sortlab"
-                      ? `${currentSortStation.algorithm} station ${sortLabStep + 1} of ${SORTLAB_STATIONS.length}. Identify the algorithm's defining move.`
+                      ? `${currentSortStation.algorithm}: ${currentSortStation.rule}`
                       : world.kind === "dfs"
-                        ? "Keep moving to an unvisited neighbor. Backtrack only when the current branch has no way forward."
+                        ? `You are at ${currentDfsNode}. Enter an unvisited connected cavern, or backtrack only when no route remains.`
                         : world.kind === "mst"
-                          ? "Scan edges from cheapest upward. Accept one only when it joins separate components."
-                          : "Select exactly the two smallest frequencies, merge them, and put their sum back into the pool.";
+                          ? `Inspect cable ${currentMstEdge.from}-${currentMstEdge.to} with cost ${currentMstEdge.weight}. Accept it only if it joins separate components.`
+                          : "Load the two smallest frequencies into the fusion chamber, then combine them into one signal.";
   const currentRoundProgress =
     world.kind === "binary"
       ? (binaryChallenge.values.length - (binaryHigh - binaryLow + 1)) /
@@ -2129,13 +2372,15 @@ function MiniGameWorld({
                   : world.kind === "dp"
                     ? dpIndex / DP_VALUES.length
                     : world.kind === "sortlab"
-                      ? sortLabStep / SORTLAB_STATIONS.length
+                      ? sortLabStep / SORTLAB_MISSIONS.length
                       : world.kind === "dfs"
-                        ? dfsStep / DFS_ORDER.length
+                        ? dfsVisited.length /
+                          Object.keys(DFS_GRAPH_ADJACENCY).length
                         : world.kind === "mst"
-                          ? mstStep / MST_ORDER.length
-                          : (HUFFMAN_START.length - huffmanNodes.length) /
-                            (HUFFMAN_START.length - 1);
+                          ? mstAccepted.length /
+                            (Object.keys(KRUSKAL_POSITIONS).length - 1)
+                          : (HUFFMAN_SIGNALS.length - huffmanNodes.length) /
+                            (HUFFMAN_SIGNALS.length - 1);
   const progressPercent = Math.min(
     100,
     ((challengeRound + currentRoundProgress) / roundCount) * 100,
@@ -2451,7 +2696,11 @@ function MiniGameWorld({
                   {bfsChallenge.edges.map(([from, to]) => (
                     <line
                       key={`${from}-${to}`}
-                      {...insetLine(GRAPH_POSITIONS[from], GRAPH_POSITIONS[to], 6)}
+                      {...insetLine(
+                        GRAPH_NODE_POSITIONS[from],
+                        GRAPH_NODE_POSITIONS[to],
+                        6,
+                      )}
                     />
                   ))}
                 </svg>
@@ -2650,26 +2899,118 @@ function MiniGameWorld({
           {world.kind === "sortlab" && (
             <section className="sortlab-mini-game" aria-label="Advanced sorting algorithm gauntlet">
               <div className="station-progress">
-                {SORTLAB_STATIONS.map((station, index) => (
+                {SORTLAB_MISSIONS.map((station, index) => (
                   <span
                     className={index < sortLabStep ? "done" : index === sortLabStep ? "active" : ""}
                     key={`${station.algorithm}-${index}`}
+                    title={station.algorithm}
                   >
                     {index + 1}
                   </span>
                 ))}
               </div>
-              <div className="sorting-workbench">
-                <small>{currentSortStation.algorithm.toUpperCase()}</small>
-                <div className="sorting-scene">
-                  {currentSortStation.scene.map((value, index) => (
-                    <span className={value === "|" ? "divider" : ""} key={`${value}-${index}`}>
-                      {value}
-                    </span>
-                  ))}
+              <div className={`sorting-workbench sort-mode-${currentSortStation.mode}`}>
+                <div className="sort-station-heading">
+                  <small>{currentSortStation.algorithm.toUpperCase()}</small>
+                  <span>MISSION {sortLabStep + 1} / {SORTLAB_MISSIONS.length}</span>
                 </div>
+                <div className="sort-rule-card">
+                  <strong>THE MOVE</strong>
+                  <p>{currentSortStation.rule}</p>
+                </div>
+
+                {currentSortStation.mode === "insert" && (
+                  <div className="insertion-bench">
+                    <div className="floating-key">
+                      <small>KEY</small>
+                      <strong>{currentSortStation.keyValue}</strong>
+                    </div>
+                    <div className="sorted-shelf">
+                      {currentSortStation.scene.map((value) => (
+                        <span key={value}>{value}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {currentSortStation.mode === "select" && (
+                  <div className="selection-yard">
+                    {currentSortStation.scene.map((value, index) => (
+                      <span
+                        className={
+                          value === "|"
+                            ? "divider"
+                            : index < 2 && currentSortStation.scene.includes("|")
+                              ? "locked"
+                              : ""
+                        }
+                        key={`${value}-${index}`}
+                      >
+                        {value === "|" ? "UNSORTED" : value}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {currentSortStation.mode === "exchange" && (
+                  <div className="exchange-deck">
+                    {currentSortStation.scene.map((value, index) => (
+                      <span key={`${value}-${index}`}>{value}</span>
+                    ))}
+                  </div>
+                )}
+
+                {currentSortStation.mode === "merge" && (
+                  <div className="merge-docks">
+                    {currentSortStation.scene
+                      .join(",")
+                      .split(",|,")
+                      .map((lane, laneIndex) => (
+                        <div className="merge-lane" key={laneIndex}>
+                          <small>LANE {laneIndex + 1}</small>
+                          <div>
+                            {lane.split(",").map((value, index) => (
+                              <span className={index === 0 ? "front" : ""} key={`${laneIndex}-${value}-${index}`}>
+                                {value}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    <div className="merge-output">OUTPUT</div>
+                  </div>
+                )}
+
+                {currentSortStation.mode === "partition" && (
+                  <div className="partition-gate">
+                    <div className="partition-bin left">SMALLER</div>
+                    <div className="pivot-tower">
+                      <small>PIVOT</small>
+                      <strong>{currentSortStation.pivot}</strong>
+                    </div>
+                    <div className="partition-bin right">LARGER</div>
+                    <div className="partition-candidate">
+                      ROUTE <strong>{currentSortStation.keyValue}</strong>
+                    </div>
+                  </div>
+                )}
+
+                {currentSortStation.mode === "heap" && (
+                  <div className="heap-tree" aria-label="Max heap">
+                    {currentSortStation.scene.map((value, index) => (
+                      <span className={`heap-node heap-node-${index}`} key={`${value}-${index}`}>
+                        {value}
+                      </span>
+                    ))}
+                    <i className="heap-edge edge-a" />
+                    <i className="heap-edge edge-b" />
+                    <i className="heap-edge edge-c" />
+                    <i className="heap-edge edge-d" />
+                  </div>
+                )}
+
                 <h2>{currentSortStation.prompt}</h2>
-                <div className="mini-actions three">
+                <div className={`sort-actions sort-actions-${currentSortStation.mode}`}>
                   {currentSortStation.options.map((option) => (
                     <button type="button" key={option} onClick={() => chooseSortLab(option)}>
                       {option}
@@ -2682,9 +3023,26 @@ function MiniGameWorld({
 
           {world.kind === "dfs" && (
             <section className="dfs-mini-game" aria-label="Depth-first search expedition">
+              <div className="plain-language-goal">
+                <strong>Explore like a cave diver.</strong>
+                <span>
+                  Keep entering an unvisited connected cavern. At a dead end,
+                  pop back to the previous cavern and try another route.
+                </span>
+              </div>
+              <div className="dfs-dashboard">
               <div className="dfs-stack">
-                <small>ACTIVE CALL STACK</small>
-                <strong>{DFS_ORDER.slice(0, dfsStep).slice(-4).join(" → ") || "empty"}</strong>
+                  <small>LIVE CALL STACK</small>
+                  <strong>{dfsStack.join(" -> ")}</strong>
+                </div>
+                <div className="dfs-stat">
+                  <small>VISITED</small>
+                  <strong>{dfsVisited.length} / {Object.keys(DFS_GRAPH_ADJACENCY).length}</strong>
+                </div>
+                <div className="dfs-stat">
+                  <small>BACKTRACKS</small>
+                  <strong>{dfsBacktracks}</strong>
+                </div>
               </div>
               <div className="graph-network dfs-network">
                 <svg
@@ -2693,16 +3051,29 @@ function MiniGameWorld({
                   preserveAspectRatio="none"
                   aria-hidden="true"
                 >
-                  {BFS_CHALLENGES[0].edges.map(([from, to]) => (
+                  {DFS_GRAPH_EDGES.map(([from, to]) => (
                     <line
+                      className={
+                        dfsTraversedEdges.includes(graphEdgeKey(from, to))
+                          ? "traversed"
+                          : ""
+                      }
                       key={`${from}-${to}`}
-                      {...insetLine(GRAPH_POSITIONS[from], GRAPH_POSITIONS[to], 6)}
+                      {...insetLine(
+                        GRAPH_NODE_POSITIONS[from],
+                        GRAPH_NODE_POSITIONS[to],
+                        6,
+                      )}
                     />
                   ))}
                 </svg>
-                {dfsVisible.map(({ node, done, active }, index) => (
+                {dfsVisible.map(({ node, done, active, available }, index) => (
                   <button
-                    className={[done ? "done" : "", active ? "active" : ""].join(" ")}
+                    className={[
+                      done ? "done" : "",
+                      active ? "active" : "",
+                      available ? "available" : "",
+                    ].join(" ")}
                     disabled={complete || done}
                     key={node}
                     onClick={() => chooseDfs(node)}
@@ -2716,28 +3087,65 @@ function MiniGameWorld({
                   </button>
                 ))}
               </div>
-              <p>Go deep until the branch ends, then unwind to the nearest unfinished choice.</p>
+              <div className="dfs-controls">
+                <div>
+                  <small>CURRENT CAVERN</small>
+                  <strong>{currentDfsNode}</strong>
+                  <span>
+                    {currentDfsNeighbors.filter((node) => !dfsVisited.includes(node)).length > 0
+                      ? "An unvisited route is still available."
+                      : "Dead end reached. Backtrack now."}
+                  </span>
+                </div>
+                <button type="button" onClick={backtrackDfs}>
+                  <ArrowLeft size={18} /> Backtrack one level
+                </button>
+              </div>
             </section>
           )}
 
           {world.kind === "mst" && (
             <section className="mst-mini-game" aria-label="Minimum spanning tree builder">
-              <div className="mst-budget">
-                <small>TOTAL CABLE COST</small>
-                <strong>
-                  {MST_EDGES.filter((edge) =>
-                    acceptedMstEdges.includes(`${edge.from}-${edge.to}`),
-                  ).reduce((total, edge) => total + edge.weight, 0)}
-                </strong>
+              <div className="plain-language-goal">
+                <strong>Connect every station cheaply.</strong>
+                <span>
+                  Cables arrive from cheapest to most expensive. Accept a cable
+                  when it joins separate groups; skip it when it closes a loop.
+                </span>
+              </div>
+              <div className="mst-dashboard">
+                <div className="mst-budget">
+                  <small>TOTAL CABLE COST</small>
+                  <strong>
+                    {KRUSKAL_EDGES.filter((edge) =>
+                      mstAccepted.includes(graphEdgeKey(edge.from, edge.to)),
+                    ).reduce((total, edge) => total + edge.weight, 0)}
+                  </strong>
+                </div>
+                <div className="mst-budget">
+                  <small>NETWORK GROUPS</small>
+                  <strong>{mstComponents}</strong>
+                </div>
+                <div className="mst-budget">
+                  <small>SAFE CABLES</small>
+                  <strong>{mstAccepted.length} / {Object.keys(KRUSKAL_POSITIONS).length - 1}</strong>
+                </div>
               </div>
               <div className="mst-map">
                 <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-                  {MST_EDGES.map((edge) => {
-                    const id = `${edge.from}-${edge.to}`;
-                    const start = MST_POSITIONS[edge.from];
-                    const end = MST_POSITIONS[edge.to];
+                  {KRUSKAL_EDGES.map((edge) => {
+                    const id = graphEdgeKey(edge.from, edge.to);
+                    const start = KRUSKAL_POSITIONS[edge.from];
+                    const end = KRUSKAL_POSITIONS[edge.to];
                     return (
-                      <g className={acceptedMstEdges.includes(id) ? "accepted" : ""} key={id}>
+                      <g
+                        className={[
+                          mstAccepted.includes(id) ? "accepted" : "",
+                          mstRejected.includes(id) ? "rejected" : "",
+                          currentMstId === id ? "candidate" : "",
+                        ].join(" ")}
+                        key={id}
+                      >
                         <line {...insetLine(start, end, 6.2)} />
                         <text x={(start.x + end.x) / 2} y={(start.y + end.y) / 2}>
                           {edge.weight}
@@ -2746,7 +3154,7 @@ function MiniGameWorld({
                     );
                   })}
                 </svg>
-                {Object.entries(MST_POSITIONS).map(([node, position]) => (
+                {Object.entries(KRUSKAL_POSITIONS).map(([node, position]) => (
                   <span
                     className="mst-node"
                     key={node}
@@ -2756,47 +3164,90 @@ function MiniGameWorld({
                   </span>
                 ))}
               </div>
-              <div className="mst-edge-bank">
-                {MST_EDGES.map((edge) => {
-                  const id = `${edge.from}-${edge.to}`;
-                  return (
-                    <button
-                      className={acceptedMstEdges.includes(id) ? "accepted" : ""}
-                      disabled={complete || acceptedMstEdges.includes(id)}
-                      key={id}
-                      onClick={() => chooseMst(id)}
-                      type="button"
-                    >
-                      {id} <strong>{edge.weight}</strong>
-                    </button>
-                  );
-                })}
+              <div className="cable-inspector">
+                <div className="candidate-cable">
+                  <small>NEXT CHEAPEST CABLE</small>
+                  <strong>{currentMstEdge.from} - {currentMstEdge.to}</strong>
+                  <span>COST {currentMstEdge.weight}</span>
+                </div>
+                <div className="component-question">
+                  <strong>Would this connect two groups or create a cycle?</strong>
+                  <p>Trace the green cables before deciding.</p>
+                </div>
+                <div className="cable-actions">
+                  <button type="button" onClick={() => inspectMstEdge("accept")}>
+                    <Check size={18} /> Accept cable
+                  </button>
+                  <button type="button" onClick={() => inspectMstEdge("skip")}>
+                    <RotateCcw size={18} /> Skip cycle
+                  </button>
+                </div>
               </div>
             </section>
           )}
 
           {world.kind === "huffman" && (
             <section className="huffman-mini-game" aria-label="Huffman compression tree builder">
+              <div className="plain-language-goal">
+                <strong>Give common symbols shorter routes.</strong>
+                <span>
+                  Fuse the two least frequent signals repeatedly. Rare signals
+                  merge early and end deeper; frequent signals remain near the root.
+                </span>
+              </div>
               <div className="frequency-pool">
                 {huffmanNodes.map((node) => (
                   <button
                     className={huffmanSelected.includes(node.id) ? "selected" : ""}
                     disabled={complete}
                     key={node.id}
-                    onClick={() => chooseHuffman(node.id)}
+                    onClick={() => selectHuffman(node.id)}
                     type="button"
                   >
                     <small>{node.label}</small>
                     <strong>{node.weight}</strong>
+                    <span style={{ width: `${Math.min(100, node.weight * 7)}%` }} />
                   </button>
                 ))}
               </div>
-              <div className="compression-meter">
+              <div className="fusion-chamber">
+                <div className="fusion-slot">
+                  <small>SIGNAL 1</small>
+                  <strong>
+                    {huffmanNodes.find((node) => node.id === huffmanSelected[0])?.label ?? "?"}
+                  </strong>
+                </div>
+                <span>+</span>
+                <div className="fusion-slot">
+                  <small>SIGNAL 2</small>
+                  <strong>
+                    {huffmanNodes.find((node) => node.id === huffmanSelected[1])?.label ?? "?"}
+                  </strong>
+                </div>
+                <button type="button" onClick={mergeHuffman}>
+                  <Sparkles size={18} /> Fuse selected signals
+                </button>
+              </div>
+              <div className="compression-meter" aria-label={`${Math.round(progressPercent)} percent compressed`}>
                 <span style={{ width: `${progressPercent}%` }} />
               </div>
-              <div className="huffman-rule">
-                <strong>SELECT TWO</strong>
-                <p>Merge the two least frequent nodes. Their sum returns to the pool.</p>
+              <div className="huffman-history">
+                <div>
+                  <strong>MERGE HISTORY</strong>
+                  <span>{huffmanHistory.length} / {HUFFMAN_SIGNALS.length - 1} fusions</span>
+                </div>
+                <ol>
+                  {huffmanHistory.length === 0 ? (
+                    <li>Fusion results will build the compression tree here.</li>
+                  ) : (
+                    huffmanHistory.map((node) => (
+                      <li key={node.id}>
+                        <span>{node.left} + {node.right}</span>
+                        <strong>{node.weight}</strong>
+                      </li>
+                    ))
+                  )}
+                </ol>
               </div>
             </section>
           )}
