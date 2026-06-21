@@ -1328,6 +1328,26 @@ const TREE_CHALLENGES = [
     ],
   },
 ] as const;
+const BFS_ADJACENCY: Record<string, string[]> = {
+  A: ["B", "C"],
+  B: ["D", "E"],
+  C: ["F", "G"],
+  D: [],
+  E: ["H"],
+  F: ["I"],
+  G: [],
+  H: [],
+  I: [],
+  J: ["K", "L"],
+  K: ["M"],
+  L: ["N", "P"],
+  M: ["R"],
+  N: ["Q"],
+  P: ["S"],
+  Q: [],
+  R: [],
+  S: [],
+};
 const BFS_CHALLENGES = [
   {
     nodes: ["A", "B", "C", "D", "E", "F", "G", "H", "I"],
@@ -1499,6 +1519,24 @@ const HUFFMAN_START = [
   { id: "E", label: "E", weight: 11 },
 ] as const;
 
+function insetLine(
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+  inset = 6,
+) {
+  const deltaX = end.x - start.x;
+  const deltaY = end.y - start.y;
+  const distance = Math.hypot(deltaX, deltaY) || 1;
+  const unitX = deltaX / distance;
+  const unitY = deltaY / distance;
+  return {
+    x1: start.x + unitX * inset,
+    y1: start.y + unitY * inset,
+    x2: end.x - unitX * inset,
+    y2: end.y - unitY * inset,
+  };
+}
+
 function isSorted(values: number[]) {
   return values.every((value, index) => index === 0 || values[index - 1] <= value);
 }
@@ -1519,6 +1557,8 @@ function MiniGameWorld({
   const [stackPhase, setStackPhase] = useState<"load" | "dispatch">("load");
   const [treeStep, setTreeStep] = useState(0);
   const [graphStep, setGraphStep] = useState(0);
+  const [bfsQueue, setBfsQueue] = useState<string[]>(["A"]);
+  const [bfsDiscovered, setBfsDiscovered] = useState<string[]>(["A"]);
   const [dijkstraStep, setDijkstraStep] = useState(0);
   const [greedyStep, setGreedyStep] = useState(0);
   const [greedySelected, setGreedySelected] = useState<string[]>([]);
@@ -1610,6 +1650,9 @@ function MiniGameWorld({
       setTreeStep(0);
     } else if (world.kind === "graph") {
       setGraphStep(0);
+      const start = BFS_CHALLENGES[nextRound].nodes[0];
+      setBfsQueue([start]);
+      setBfsDiscovered([start]);
     }
     setMessage(`Stage ${nextRound + 1} ready. The rule is the same, but the puzzle changed.`);
     flashFeedback("clear", "Stage clear", 850);
@@ -1656,6 +1699,8 @@ function MiniGameWorld({
     setStackPhase("load");
     setTreeStep(0);
     setGraphStep(0);
+    setBfsQueue(["A"]);
+    setBfsDiscovered(["A"]);
     setDijkstraStep(0);
     setGreedyStep(0);
     setGreedySelected([]);
@@ -1795,19 +1840,30 @@ function MiniGameWorld({
   }
 
   function chooseGraph(node: string) {
-    const expected = bfsChallenge.order[graphStep];
+    const expected = bfsQueue[0];
     if (node !== expected) {
-      miss(`BFS uses a queue. Serve ${expected} before later discovered nodes.`);
+      miss(`Serve the oldest waiting station first. ${expected} is currently at the front of the queue.`);
       return;
     }
+    const newNeighbors = (BFS_ADJACENCY[node] ?? []).filter(
+      (neighbor) => !bfsDiscovered.includes(neighbor),
+    );
+    const nextQueue = [...bfsQueue.slice(1), ...newNeighbors];
+    const nextDiscovered = [...bfsDiscovered, ...newNeighbors];
     const nextStep = graphStep + 1;
     reward("Queue served");
     setGraphStep(nextStep);
-    if (nextStep >= bfsChallenge.order.length) {
+    setBfsQueue(nextQueue);
+    setBfsDiscovered(nextDiscovered);
+    if (nextStep >= bfsChallenge.nodes.length) {
       finishRound("Both rescue networks cleared. Queue discipline kept each traversal level by level.");
       return;
     }
-    setMessage(`${node} processed. Use discovery order to identify the next queue front.`);
+    setMessage(
+      newNeighbors.length > 0
+        ? `${node} rescued. New neighbors ${newNeighbors.join(", ")} joined the back of the queue.`
+        : `${node} rescued. It had no new neighbors, so continue with the oldest waiting station.`,
+    );
   }
 
   function chooseDijkstra(node: string) {
@@ -1968,13 +2024,18 @@ function MiniGameWorld({
   const treeVisited: number[] = treeChallenge.path
     .slice(0, treeStep)
     .map((step) => step.node);
-  const bfsOrder: readonly string[] = bfsChallenge.order;
+  const visibleTreeNodes = new Set<number>([
+    50,
+    ...treeVisited,
+    currentTreeNode,
+    ...treeChoices,
+  ]);
   const graphVisible = bfsChallenge.nodes.map((node) => ({
     node,
-    done: bfsOrder.indexOf(node) < graphStep,
-    active:
-      challengeRound === 0 &&
-      bfsOrder.indexOf(node) === graphStep,
+    done: bfsDiscovered.includes(node) && !bfsQueue.includes(node),
+    active: bfsQueue[0] === node,
+    waiting: bfsQueue.includes(node) && bfsQueue[0] !== node,
+    discovered: bfsDiscovered.includes(node),
   }));
   const currentDijkstra = DIJKSTRA_STEPS[dijkstraStep] ?? DIJKSTRA_STEPS[DIJKSTRA_STEPS.length - 1];
   const lockedDijkstraNodes = DIJKSTRA_STEPS.slice(0, dijkstraStep).map(
@@ -2007,6 +2068,12 @@ function MiniGameWorld({
     active: DFS_ORDER.indexOf(node) === dfsStep,
   }));
   const acceptedMstEdges = MST_ORDER.slice(0, mstStep);
+  const lastGreedyFinish =
+    greedySelected.length > 0
+      ? GREEDY_INTERVALS.find(
+          (interval) => interval.id === greedySelected[greedySelected.length - 1],
+        )?.finish ?? 0
+      : 0;
   const moveCoach =
     world.kind === "binary"
       ? `The middle value is ${pivotValue}. Compare it to ${binaryChallenge.target}, then cut the half that cannot win.`
@@ -2018,8 +2085,8 @@ function MiniGameWorld({
             : `Pop the top crate first: ${stack[stack.length - 1] ?? "nothing"} is blocking everything below it.`
           : world.kind === "tree"
             ? `${currentTreeNode} is your current branch. Compare it with ${treeChallenge.target}: smaller goes left, larger goes right.`
-            : world.kind === "graph"
-              ? "BFS is a rescue line. Serve the front of the queue before touching later discoveries."
+          : world.kind === "graph"
+              ? "BFS is a waiting line: rescue the oldest station, then add its new neighbors to the back."
               : world.kind === "dijkstra"
                 ? "Frontier costs are tentative. Compare every visible cost and lock the smallest one."
                 : world.kind === "greedy"
@@ -2054,7 +2121,7 @@ function MiniGameWorld({
           : world.kind === "tree"
             ? treeStep / treeChallenge.path.length
             : world.kind === "graph"
-              ? graphStep / bfsChallenge.order.length
+              ? graphStep / bfsChallenge.nodes.length
               : world.kind === "dijkstra"
                 ? dijkstraStep / DIJKSTRA_STEPS.length
                 : world.kind === "greedy"
@@ -2312,11 +2379,13 @@ function MiniGameWorld({
                 >
                   {TREE_EDGES.map(([from, to]) => (
                     <line
+                      className={
+                        visibleTreeNodes.has(from) && visibleTreeNodes.has(to)
+                          ? "revealed"
+                          : "hidden"
+                      }
                       key={`${from}-${to}`}
-                      x1={TREE_POSITIONS[from].x}
-                      y1={TREE_POSITIONS[from].y}
-                      x2={TREE_POSITIONS[to].x}
-                      y2={TREE_POSITIONS[to].y}
+                      {...insetLine(TREE_POSITIONS[from], TREE_POSITIONS[to], 6)}
                     />
                   ))}
                 </svg>
@@ -2342,8 +2411,9 @@ function MiniGameWorld({
                         isChoice ? "choice" : "",
                         isVisited ? "visited" : "",
                         isCurrent ? "current" : "",
+                        visibleTreeNodes.has(value) ? "revealed" : "hidden-tree-node",
                       ].join(" ")}
-                      disabled={complete || !isChoice}
+                      disabled={complete || !isChoice || !visibleTreeNodes.has(value)}
                       onClick={() => chooseTree(value)}
                       style={{
                         left: `${TREE_POSITIONS[value].x}%`,
@@ -2357,7 +2427,10 @@ function MiniGameWorld({
               </div>
               <div className="mini-rule-line">
                 <strong>Target {treeChallenge.target}</strong>
-                <span>Click a child of {currentTreeNode}</span>
+                <span>
+                  Is the target smaller or larger than {currentTreeNode}? Choose
+                  that child.
+                </span>
               </div>
             </section>
           )}
@@ -2378,17 +2451,19 @@ function MiniGameWorld({
                   {bfsChallenge.edges.map(([from, to]) => (
                     <line
                       key={`${from}-${to}`}
-                      x1={GRAPH_POSITIONS[from].x}
-                      y1={GRAPH_POSITIONS[from].y}
-                      x2={GRAPH_POSITIONS[to].x}
-                      y2={GRAPH_POSITIONS[to].y}
+                      {...insetLine(GRAPH_POSITIONS[from], GRAPH_POSITIONS[to], 6)}
                     />
                   ))}
                 </svg>
-                {graphVisible.map(({ node, done, active }, index) => (
+                {graphVisible.map(({ node, done, active, waiting, discovered }, index) => (
                   <button
-                    className={[done ? "done" : "", active ? "active" : ""].join(" ")}
-                    disabled={complete || done}
+                    className={[
+                      done ? "done" : "",
+                      active ? "active" : "",
+                      waiting ? "waiting" : "",
+                      discovered ? "discovered" : "hidden-node",
+                    ].join(" ")}
+                    disabled={complete || done || !active}
                     key={node}
                     onClick={() => chooseGraph(node)}
                     style={{
@@ -2402,11 +2477,12 @@ function MiniGameWorld({
                 ))}
               </div>
               <div className="queue-strip">
-                {challengeRound === 0
-                  ? `Queue: ${bfsChallenge.order.slice(graphStep, graphStep + 4).join(" → ") || "empty"}`
-                  : `${Math.max(0, bfsChallenge.order.length - graphStep)} stations waiting. Infer the oldest discovery.`}
+                Queue: {bfsQueue.join(" → ") || "empty"}
               </div>
-              <p>Read the connected network, then serve the queue in discovery order.</p>
+              <p>
+                Bright yellow is the front. Blue stations are waiting behind it.
+                Rescue one station, then watch new neighbors enter the line.
+              </p>
             </section>
           )}
 
@@ -2415,10 +2491,17 @@ function MiniGameWorld({
               <div className="route-control">
                 <span className="route-origin">START 0</span>
                 <div>
-                  {DIJKSTRA_STEPS.slice(0, dijkstraStep).map((step) => (
-                    <span key={step.correct}>LOCKED {step.correct}</span>
-                  ))}
+                  <span>
+                    {dijkstraStep} OF {DIJKSTRA_STEPS.length} LOCATIONS LOCKED
+                  </span>
                 </div>
+              </div>
+              <div className="plain-language-goal">
+                <strong>Imagine these are delivery times.</strong>
+                <span>
+                  Compare only the white frontier circles. Lock the smallest
+                  total cost; gray circles are not reachable yet.
+                </span>
               </div>
               <div className="weighted-map">
                 <svg
@@ -2432,7 +2515,7 @@ function MiniGameWorld({
                     const end = DIJKSTRA_POSITIONS[to];
                     return (
                       <g key={`${from}-${to}`}>
-                        <line x1={start.x} y1={start.y} x2={end.x} y2={end.y} />
+                        <line {...insetLine(start, end, 6.2)} />
                         <text x={(start.x + end.x) / 2} y={(start.y + end.y) / 2}>
                           {weight}
                         </text>
@@ -2470,6 +2553,13 @@ function MiniGameWorld({
 
           {world.kind === "greedy" && (
             <section className="greedy-mini-game" aria-label="Greedy interval planner">
+              <div className="plain-language-goal">
+                <strong>Build the busiest possible day.</strong>
+                <span>
+                  Pick a meeting that does not overlap your schedule. Among
+                  valid choices, the one ending earliest leaves the most room.
+                </span>
+              </div>
               <div className="schedule-wall">
               <div className="timeline-scale">
                   {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].map((tick) => (
@@ -2479,8 +2569,18 @@ function MiniGameWorld({
                 <div className="interval-row">
                   {GREEDY_INTERVALS.map((interval, index) => (
                     <button
-                      className={greedySelected.includes(interval.id) ? "selected" : ""}
-                      disabled={complete || greedySelected.includes(interval.id)}
+                      className={[
+                        greedySelected.includes(interval.id) ? "selected" : "",
+                        interval.start < lastGreedyFinish &&
+                        !greedySelected.includes(interval.id)
+                          ? "conflict"
+                          : "",
+                      ].join(" ")}
+                      disabled={
+                        complete ||
+                        greedySelected.includes(interval.id) ||
+                        interval.start < lastGreedyFinish
+                      }
                       key={interval.id}
                       onClick={() => chooseGreedy(interval.id)}
                       style={{
@@ -2501,11 +2601,30 @@ function MiniGameWorld({
 
           {world.kind === "dp" && (
             <section className="dp-mini-game" aria-label="Dynamic programming memo forge">
+              <div className="plain-language-goal">
+                <strong>Do not recalculate old answers.</strong>
+                <span>
+                  Read the two saved cells named in the formula, add them, and
+                  store the result in the glowing empty cell.
+                </span>
+              </div>
               <div className="memo-equation">
                 <small>BUILD RULE</small>
                 <strong>
                   fib({dpIndex}) = fib({Math.max(0, dpIndex - 1)}) + fib({Math.max(0, dpIndex - 2)})
                 </strong>
+              </div>
+              <div className="dp-helper">
+                <span>
+                  Saved fib({Math.max(0, dpIndex - 1)}) =
+                  <strong>{DP_VALUES[Math.max(0, dpIndex - 1)]}</strong>
+                </span>
+                <span>+</span>
+                <span>
+                  Saved fib({Math.max(0, dpIndex - 2)}) =
+                  <strong>{DP_VALUES[Math.max(0, dpIndex - 2)]}</strong>
+                </span>
+                <span>= ?</span>
               </div>
               <div className="memo-forge">
                 <div className="forge-core"><span>CACHE</span></div>
@@ -2577,10 +2696,7 @@ function MiniGameWorld({
                   {BFS_CHALLENGES[0].edges.map(([from, to]) => (
                     <line
                       key={`${from}-${to}`}
-                      x1={GRAPH_POSITIONS[from].x}
-                      y1={GRAPH_POSITIONS[from].y}
-                      x2={GRAPH_POSITIONS[to].x}
-                      y2={GRAPH_POSITIONS[to].y}
+                      {...insetLine(GRAPH_POSITIONS[from], GRAPH_POSITIONS[to], 6)}
                     />
                   ))}
                 </svg>
@@ -2622,7 +2738,7 @@ function MiniGameWorld({
                     const end = MST_POSITIONS[edge.to];
                     return (
                       <g className={acceptedMstEdges.includes(id) ? "accepted" : ""} key={id}>
-                        <line x1={start.x} y1={start.y} x2={end.x} y2={end.y} />
+                        <line {...insetLine(start, end, 6.2)} />
                         <text x={(start.x + end.x) / 2} y={(start.y + end.y) / 2}>
                           {edge.weight}
                         </text>

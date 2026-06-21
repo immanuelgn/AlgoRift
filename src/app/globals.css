@@ -5943,6 +5943,21 @@ a:focus-visible {
   background: #a7f35b;
 }
 
+.graph-network button.waiting {
+  background: #67e8f9;
+}
+
+.graph-network button.hidden-node {
+  background: rgba(255, 255, 255, 0.24);
+  border-style: dashed;
+  color: rgba(17, 22, 45, 0.48);
+  opacity: 0.52;
+}
+
+.graph-network button.discovered {
+  opacity: 1;
+}
+
 .graph-network .edge {
   background: #8c96aa;
   height: 4px;
@@ -5993,6 +6008,7 @@ a:focus-visible {
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
+  min-height: 32px;
 }
 
 .route-control > div span {
@@ -7820,6 +7836,14 @@ a:focus-visible {
 .schedule-wall .interval-row button:nth-child(even) { background: #82d9ff; }
 .schedule-wall .interval-row button.selected { background: #58e2a4; }
 
+.schedule-wall .interval-row button.conflict {
+  background: #e3e5e9;
+  border-style: dashed;
+  color: #858b9a;
+  opacity: 0.52;
+  text-decoration: line-through;
+}
+
 .memo-forge {
   min-height: 330px;
   position: relative;
@@ -7888,6 +7912,31 @@ a:focus-visible {
 
 .game-theme-dp .memo-equation small {
   color: #ff9bb4;
+}
+
+.dp-helper {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.dp-helper span {
+  background: #fffdf3;
+  border: 2px solid #11162d;
+  border-radius: 12px;
+  color: #11162d;
+  font-family: Consolas, monospace;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 10px 12px;
+}
+
+.dp-helper strong {
+  color: #bd315d;
+  font-size: 18px;
+  margin-left: 6px;
 }
 
 @keyframes radarSweep {
@@ -8514,6 +8563,7 @@ a:focus-visible {
   inset: 0;
   overflow: visible;
   position: absolute;
+  pointer-events: none;
   width: 100%;
   z-index: 1;
 }
@@ -8530,12 +8580,18 @@ a:focus-visible {
   transform: translate(-50%, -50%);
 }
 
-.graph-network button:hover {
+.graph-network button:hover:not(:disabled) {
   transform: translate(-50%, calc(-50% - 3px)) scale(1.04);
 }
 
-.graph-network button:active {
+.graph-network button:active:not(:disabled) {
   transform: translate(-50%, calc(-50% + 2px)) scale(0.98);
+}
+
+.graph-network button:disabled,
+.tree-node-map button:disabled,
+.weighted-map .city-node:disabled {
+  transform: translate(-50%, -50%);
 }
 
 .graph-network button:first-of-type {
@@ -8582,6 +8638,7 @@ a:focus-visible {
 
 .weighted-map .city-node {
   height: 92px;
+  min-width: 92px;
   width: 92px;
 }
 
@@ -8602,11 +8659,11 @@ a:focus-visible {
   opacity: 0.72;
 }
 
-.weighted-map .city-node:hover {
+.weighted-map .city-node:hover:not(:disabled) {
   transform: translate(-50%, calc(-50% - 3px)) scale(1.04);
 }
 
-.weighted-map .city-node:active {
+.weighted-map .city-node:active:not(:disabled) {
   transform: translate(-50%, calc(-50% + 2px)) scale(0.98);
 }
 
@@ -8805,6 +8862,7 @@ a:focus-visible {
   height: 100%;
   inset: 0;
   position: absolute;
+  pointer-events: none;
   width: 100%;
   z-index: 1;
 }
@@ -8813,6 +8871,15 @@ a:focus-visible {
   stroke: #795133;
   stroke-linecap: round;
   stroke-width: 1.4;
+  transition: opacity 180ms ease;
+}
+
+.tree-lines line.hidden {
+  opacity: 0;
+}
+
+.tree-lines line.revealed {
+  opacity: 1;
 }
 
 .tree-node-map > span,
@@ -8833,12 +8900,49 @@ a:focus-visible {
   grid-column: auto;
 }
 
-.tree-node-map button:hover {
+.tree-node-map button.choice:hover:not(:disabled),
+.tree-node-map button:hover:not(:disabled) {
   transform: translate(-50%, calc(-50% - 3px)) scale(1.04);
 }
 
-.tree-node-map button:active {
+.tree-node-map button.choice:active:not(:disabled),
+.tree-node-map button:active:not(:disabled) {
   transform: translate(-50%, calc(-50% + 2px)) scale(0.98);
+}
+
+.tree-node-map button.hidden-tree-node {
+  opacity: 0.14;
+  visibility: hidden;
+}
+
+.tree-node-map button.revealed {
+  visibility: visible;
+}
+
+.plain-language-goal {
+  align-items: center;
+  background: rgba(255, 253, 243, 0.94);
+  border: 3px solid #11162d;
+  border-radius: 16px;
+  color: #11162d;
+  display: flex;
+  gap: 14px;
+  padding: 15px 17px;
+}
+
+.plain-language-goal strong {
+  background: #ffd84d;
+  border: 2px solid #11162d;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  font-size: 12px;
+  padding: 8px 11px;
+}
+
+.plain-language-goal span {
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.45;
 }
 
 .game-theme-sortlab .mini-game-board {
