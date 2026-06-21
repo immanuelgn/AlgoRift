@@ -1210,29 +1210,117 @@ type MiniGameWorldProps = {
   onComplete: (payload: PlayerProgress) => void;
 };
 
-const BINARY_VALUES = [3, 8, 12, 17, 23, 31, 42];
-const SORT_START = [6, 3, 8, 1, 5];
-const TREE_PATH = [
-  { node: 50, choices: [25, 75], correct: 75, hint: "68 is larger than 50, so choose the right child: 75." },
-  { node: 75, choices: [60, 90], correct: 60, hint: "68 is smaller than 75, so choose the left child: 60." },
-  { node: 60, choices: [55, 68], correct: 68, hint: "68 is larger than 60, so choose the right child: 68." },
+const BINARY_CHALLENGES = [
+  { values: [3, 8, 12, 17, 23, 31, 42], target: 42 },
+  { values: [4, 9, 15, 22, 31, 47, 58, 63, 79], target: 47 },
+  { values: [2, 7, 14, 19, 27, 35, 44, 52, 61, 73, 88], target: 27 },
 ] as const;
-const BFS_ORDER = ["A", "B", "C", "D", "E", "F"];
+const SORT_CHALLENGES = [
+  [6, 3, 8, 1, 5],
+  [9, 4, 7, 2, 8, 1],
+  [12, 5, 9, 3, 11, 2, 7],
+] as const;
+const STACK_CHALLENGES = [
+  ["A", "B", "C"],
+  ["K", "M", "R", "T"],
+  ["1", "2", "3", "4", "5"],
+] as const;
+const TREE_CHALLENGES = [
+  {
+    target: 68,
+    path: [
+      { node: 50, choices: [25, 75], correct: 75, hint: "68 is larger than 50, so take the right branch." },
+      { node: 75, choices: [60, 90], correct: 60, hint: "68 is smaller than 75, so take the left branch." },
+      { node: 60, choices: [55, 68], correct: 68, hint: "68 is larger than 60, so take the right branch." },
+    ],
+  },
+  {
+    target: 55,
+    path: [
+      { node: 50, choices: [25, 75], correct: 75, hint: "55 is larger than 50." },
+      { node: 75, choices: [60, 90], correct: 60, hint: "55 is smaller than 75." },
+      { node: 60, choices: [55, 68], correct: 55, hint: "55 is smaller than 60." },
+    ],
+  },
+  {
+    target: 90,
+    path: [
+      { node: 50, choices: [25, 75], correct: 75, hint: "90 is larger than 50." },
+      { node: 75, choices: [60, 90], correct: 90, hint: "90 is larger than 75." },
+    ],
+  },
+] as const;
+const BFS_CHALLENGES = [
+  {
+    nodes: ["A", "B", "C", "D", "E", "F", "G", "H", "I"],
+    order: ["A", "B", "C", "D", "E", "F", "G", "H", "I"],
+    edges: [[0, 1], [0, 2], [1, 3], [1, 4], [2, 5], [2, 6], [4, 7], [5, 8]],
+  },
+  {
+    nodes: ["J", "K", "L", "M", "N", "P", "Q", "R", "S"],
+    order: ["J", "K", "L", "M", "N", "P", "R", "Q", "S"],
+    edges: [[0, 1], [0, 2], [1, 3], [2, 4], [2, 5], [3, 7], [4, 6], [5, 8]],
+  },
+] as const;
 const DIJKSTRA_STEPS = [
-  { frontier: ["B:4", "C:2", "D:8"], correct: "C" },
-  { frontier: ["B:4", "E:5", "D:8"], correct: "B" },
-  { frontier: ["E:5", "D:7", "F:11"], correct: "E" },
-  { frontier: ["D:7", "F:9"], correct: "D" },
+  { frontier: ["A:7", "B:3", "C:9"], correct: "B" },
+  { frontier: ["A:5", "C:9", "D:7", "E:11"], correct: "A" },
+  { frontier: ["C:8", "D:7", "E:11", "F:13"], correct: "D" },
+  { frontier: ["C:8", "E:9", "F:12", "G:15"], correct: "C" },
+  { frontier: ["E:9", "F:10", "G:14"], correct: "E" },
+  { frontier: ["F:10", "G:12"], correct: "F" },
+  { frontier: ["G:12"], correct: "G" },
 ] as const;
 const GREEDY_INTERVALS = [
   { id: "B", label: "B", start: 1, finish: 3 },
-  { id: "A", label: "A", start: 0, finish: 5 },
-  { id: "D", label: "D", start: 3, finish: 5 },
-  { id: "C", label: "C", start: 4, finish: 7 },
-  { id: "E", label: "E", start: 5, finish: 8 },
+  { id: "A", label: "A", start: 0, finish: 4 },
+  { id: "C", label: "C", start: 3, finish: 5 },
+  { id: "D", label: "D", start: 4, finish: 7 },
+  { id: "E", label: "E", start: 5, finish: 7 },
+  { id: "F", label: "F", start: 6, finish: 9 },
+  { id: "G", label: "G", start: 7, finish: 9 },
+  { id: "H", label: "H", start: 8, finish: 11 },
+  { id: "I", label: "I", start: 9, finish: 12 },
+  { id: "J", label: "J", start: 10, finish: 13 },
 ] as const;
-const GREEDY_ORDER = ["B", "D", "E"];
-const DP_VALUES = [0, 1, 1, 2, 3, 5];
+const GREEDY_ORDER = ["B", "C", "E", "G", "I"];
+const DP_VALUES = [0, 1, 1, 2, 3, 5, 8, 13, 21];
+const GRAPH_POSITIONS = [
+  { x: 50, y: 12 },
+  { x: 25, y: 34 },
+  { x: 75, y: 34 },
+  { x: 12, y: 60 },
+  { x: 38, y: 60 },
+  { x: 62, y: 60 },
+  { x: 88, y: 60 },
+  { x: 35, y: 86 },
+  { x: 65, y: 86 },
+] as const;
+const DIJKSTRA_POSITIONS: Record<string, { x: number; y: number }> = {
+  "0": { x: 9, y: 52 },
+  A: { x: 30, y: 22 },
+  B: { x: 30, y: 72 },
+  C: { x: 51, y: 16 },
+  D: { x: 51, y: 51 },
+  E: { x: 52, y: 83 },
+  F: { x: 76, y: 32 },
+  G: { x: 84, y: 72 },
+};
+const DIJKSTRA_EDGES = [
+  ["0", "A", 7],
+  ["0", "B", 3],
+  ["0", "C", 9],
+  ["B", "A", 2],
+  ["B", "D", 4],
+  ["A", "D", 2],
+  ["A", "C", 3],
+  ["D", "C", 1],
+  ["D", "E", 2],
+  ["C", "F", 2],
+  ["E", "F", 1],
+  ["E", "G", 3],
+  ["F", "G", 2],
+] as const;
 
 function isSorted(values: number[]) {
   return values.every((value, index) => index === 0 || values[index - 1] <= value);
@@ -1243,13 +1331,14 @@ function MiniGameWorld({
   onExit,
   onComplete,
 }: MiniGameWorldProps) {
+  const [challengeRound, setChallengeRound] = useState(0);
   const [binaryLow, setBinaryLow] = useState(0);
-  const [binaryHigh, setBinaryHigh] = useState(BINARY_VALUES.length - 1);
-  const [packets, setPackets] = useState(SORT_START);
+  const [binaryHigh, setBinaryHigh] = useState(BINARY_CHALLENGES[0].values.length - 1);
+  const [packets, setPackets] = useState<number[]>([...SORT_CHALLENGES[0]]);
   const [sortCursor, setSortCursor] = useState(0);
   const [sortPass, setSortPass] = useState(1);
   const [stack, setStack] = useState<string[]>([]);
-  const [stackDock, setStackDock] = useState(["A", "B", "C"]);
+  const [stackDock, setStackDock] = useState<string[]>([...STACK_CHALLENGES[0]]);
   const [stackPhase, setStackPhase] = useState<"load" | "dispatch">("load");
   const [treeStep, setTreeStep] = useState(0);
   const [graphStep, setGraphStep] = useState(0);
@@ -1266,6 +1355,24 @@ function MiniGameWorld({
   const [rewardText, setRewardText] = useState("");
   const [rewardKey, setRewardKey] = useState(0);
   const feedbackTimer = useRef<number | null>(null);
+  const binaryChallenge =
+    BINARY_CHALLENGES[challengeRound % BINARY_CHALLENGES.length];
+  const treeChallenge =
+    TREE_CHALLENGES[challengeRound % TREE_CHALLENGES.length];
+  const bfsChallenge =
+    BFS_CHALLENGES[challengeRound % BFS_CHALLENGES.length];
+  const roundCount =
+    world.kind === "binary"
+      ? BINARY_CHALLENGES.length
+      : world.kind === "sort"
+        ? SORT_CHALLENGES.length
+        : world.kind === "stack"
+          ? STACK_CHALLENGES.length
+          : world.kind === "tree"
+            ? TREE_CHALLENGES.length
+            : world.kind === "graph"
+              ? BFS_CHALLENGES.length
+              : 1;
 
   useEffect(() => {
     resetMiniGame();
@@ -1301,6 +1408,38 @@ function MiniGameWorld({
     flashFeedback("reward", label);
   }
 
+  function prepareRound(nextRound: number) {
+    setChallengeRound(nextRound);
+    setStreak(0);
+    if (world.kind === "binary") {
+      setBinaryLow(0);
+      setBinaryHigh(BINARY_CHALLENGES[nextRound].values.length - 1);
+    } else if (world.kind === "sort") {
+      setPackets([...SORT_CHALLENGES[nextRound]]);
+      setSortCursor(0);
+      setSortPass(1);
+    } else if (world.kind === "stack") {
+      setStack([]);
+      setStackDock([...STACK_CHALLENGES[nextRound]]);
+      setStackPhase("load");
+    } else if (world.kind === "tree") {
+      setTreeStep(0);
+    } else if (world.kind === "graph") {
+      setGraphStep(0);
+    }
+    setMessage(`Stage ${nextRound + 1} ready. The rule is the same, but the puzzle changed.`);
+    flashFeedback("clear", "Stage clear", 850);
+  }
+
+  function finishRound(detail: string) {
+    const nextRound = challengeRound + 1;
+    if (nextRound < roundCount) {
+      prepareRound(nextRound);
+      return;
+    }
+    completeMiniGame(detail);
+  }
+
   function completeMiniGame(detail: string) {
     if (complete) return;
     setStreak((current) => current + 1);
@@ -1322,13 +1461,14 @@ function MiniGameWorld({
   }
 
   function resetMiniGame() {
+    setChallengeRound(0);
     setBinaryLow(0);
-    setBinaryHigh(BINARY_VALUES.length - 1);
-    setPackets(SORT_START);
+    setBinaryHigh(BINARY_CHALLENGES[0].values.length - 1);
+    setPackets([...SORT_CHALLENGES[0]]);
     setSortCursor(0);
     setSortPass(1);
     setStack([]);
-    setStackDock(["A", "B", "C"]);
+    setStackDock([...STACK_CHALLENGES[0]]);
     setStackPhase("load");
     setTreeStep(0);
     setGraphStep(0);
@@ -1348,24 +1488,24 @@ function MiniGameWorld({
 
   function chooseBinary(action: "left" | "right" | "found") {
     const pivotIndex = Math.floor((binaryLow + binaryHigh) / 2);
-    const pivot = BINARY_VALUES[pivotIndex];
-    if (action === "found" && pivot === 42) {
-      completeMiniGame("Target found. Binary search ended after cutting the range down to one value.");
+    const pivot = binaryChallenge.values[pivotIndex];
+    if (action === "found" && pivot === binaryChallenge.target) {
+      finishRound("All scanner stages cleared. You repeatedly removed impossible halves.");
       return;
     }
-    if (pivot < 42 && action === "right") {
+    if (pivot < binaryChallenge.target && action === "right") {
       reward("Range cut");
       setBinaryLow(pivotIndex + 1);
       setMessage(`${pivot} is too small, so the left half is impossible. Keep the right half.`);
       return;
     }
-    if (pivot > 42 && action === "left") {
+    if (pivot > binaryChallenge.target && action === "left") {
       reward("Range cut");
       setBinaryHigh(pivotIndex - 1);
       setMessage(`${pivot} is too large, so the right half is impossible. Keep the left half.`);
       return;
     }
-    miss("Check the middle value first, then keep only the half where 42 can still exist.");
+    miss(`Check the middle value first, then keep only the half where ${binaryChallenge.target} can still exist.`);
   }
 
   function resolveSort(action: "keep" | "swap") {
@@ -1391,7 +1531,7 @@ function MiniGameWorld({
 
     const atPassEnd = sortCursor >= next.length - 2;
     if (atPassEnd && isSorted(next)) {
-      completeMiniGame("Sorted. Every neighboring pair is now in ascending order.");
+      finishRound("All conveyor stages sorted. Repeated local swaps produced global order.");
       return;
     }
 
@@ -1413,7 +1553,7 @@ function MiniGameWorld({
   function loadStack(value: string) {
     const expected = stackDock[0];
     if (value !== expected) {
-      miss(`The loading manifest is A, then B, then C. Load ${expected} next.`);
+      miss(`Follow the manifest from left to right. Load ${expected} next.`);
       return;
     }
     const nextDock = stackDock.slice(1);
@@ -1439,14 +1579,14 @@ function MiniGameWorld({
     reward("Popped");
     setStack(next);
     if (next.length === 0) {
-      completeMiniGame("Stack cleared in C, B, A order. That is last-in, first-out.");
+      finishRound("All cargo manifests cleared using last-in, first-out order.");
       return;
     }
     setMessage(`${value} popped from the top. The next removable crate is ${next[next.length - 1]}.`);
   }
 
   function chooseTree(value: number) {
-    const step = TREE_PATH[treeStep];
+    const step = treeChallenge.path[treeStep];
     if (!(step.choices as readonly number[]).includes(value)) {
       miss(`Choose one of the two children connected to ${step.node}.`);
       return;
@@ -1458,15 +1598,15 @@ function MiniGameWorld({
     const nextStep = treeStep + 1;
     reward("Branch read");
     setTreeStep(nextStep);
-    if (nextStep >= TREE_PATH.length) {
-      completeMiniGame("Route found: 50 -> 75 -> 60 -> 68. BST comparisons guided every branch.");
+    if (nextStep >= treeChallenge.path.length) {
+      finishRound("All targets located. Each comparison removed an entire subtree.");
       return;
     }
-    setMessage(`Correct branch. Now compare 68 with ${TREE_PATH[nextStep].node}.`);
+    setMessage(`Correct branch. Now compare ${treeChallenge.target} with ${treeChallenge.path[nextStep].node}.`);
   }
 
   function chooseGraph(node: string) {
-    const expected = BFS_ORDER[graphStep];
+    const expected = bfsChallenge.order[graphStep];
     if (node !== expected) {
       miss(`BFS uses a queue. Serve ${expected} before later discovered nodes.`);
       return;
@@ -1474,11 +1614,11 @@ function MiniGameWorld({
     const nextStep = graphStep + 1;
     reward("Queue served");
     setGraphStep(nextStep);
-    if (nextStep >= BFS_ORDER.length) {
-      completeMiniGame("All nodes rescued in BFS order. Queue discipline kept the search level by level.");
+    if (nextStep >= bfsChallenge.order.length) {
+      finishRound("Both rescue networks cleared. Queue discipline kept each traversal level by level.");
       return;
     }
-    setMessage(`${node} processed. The next queue front is ${BFS_ORDER[nextStep]}.`);
+    setMessage(`${node} processed. Use discovery order to identify the next queue front.`);
   }
 
   function chooseDijkstra(node: string) {
@@ -1491,7 +1631,7 @@ function MiniGameWorld({
     reward("Lowest locked");
     setDijkstraStep(nextStep);
     if (nextStep >= DIJKSTRA_STEPS.length) {
-      completeMiniGame("Shortest route confirmed. The lowest-distance frontier won every round.");
+      completeMiniGame("Full city network solved. The lowest tentative distance won every round.");
       return;
     }
     setMessage(`${node} locked. Re-check the frontier and choose the next cheapest distance.`);
@@ -1509,7 +1649,7 @@ function MiniGameWorld({
     setGreedySelected(nextSelected);
     setGreedyStep(nextStep);
     if (nextStep >= GREEDY_ORDER.length) {
-      completeMiniGame("Schedule complete. Earliest finishing choices left room for the most events.");
+      completeMiniGame("Full-day schedule complete. Earliest finishing choices left room for five events.");
       return;
     }
     setMessage(`${intervalId} selected. Now pick the next compatible interval with the earliest finish.`);
@@ -1525,28 +1665,43 @@ function MiniGameWorld({
     reward("Cached");
     setDpIndex(nextIndex);
     if (nextIndex >= DP_VALUES.length) {
-      completeMiniGame("Memo table complete. Each new value reused the two cached answers before it.");
+      completeMiniGame("Memo table extended through fib(8). Every answer reused cached subproblems.");
       return;
     }
     setMessage(`fib(${dpIndex}) cached as ${value}. Build the next cell from the cache.`);
   }
 
   const pivotIndex = Math.floor((binaryLow + binaryHigh) / 2);
-  const pivotValue = BINARY_VALUES[pivotIndex];
-  const visibleBinary = BINARY_VALUES.map((value, index) => ({
+  const pivotValue = binaryChallenge.values[pivotIndex];
+  const visibleBinary = binaryChallenge.values.map((value, index) => ({
     value,
     active: index >= binaryLow && index <= binaryHigh,
     pivot: index === pivotIndex,
   }));
-  const currentTreeNode = TREE_PATH[treeStep]?.node ?? 68;
-  const treeChoices = (TREE_PATH[treeStep]?.choices ?? []) as readonly number[];
-  const treeVisited = [50, 75, 60].slice(0, treeStep);
-  const graphVisible = BFS_ORDER.map((node, index) => ({
+  const currentTreeNode =
+    treeChallenge.path[treeStep]?.node ?? treeChallenge.target;
+  const treeChoices = (treeChallenge.path[treeStep]?.choices ?? []) as readonly number[];
+  const treeVisited: number[] = treeChallenge.path
+    .slice(0, treeStep)
+    .map((step) => step.node);
+  const bfsOrder: readonly string[] = bfsChallenge.order;
+  const graphVisible = bfsChallenge.nodes.map((node) => ({
     node,
-    done: index < graphStep,
-    active: index === graphStep,
+    done: bfsOrder.indexOf(node) < graphStep,
+    active:
+      challengeRound === 0 &&
+      bfsOrder.indexOf(node) === graphStep,
   }));
   const currentDijkstra = DIJKSTRA_STEPS[dijkstraStep] ?? DIJKSTRA_STEPS[DIJKSTRA_STEPS.length - 1];
+  const lockedDijkstraNodes = DIJKSTRA_STEPS.slice(0, dijkstraStep).map(
+    (step) => step.correct,
+  );
+  const dijkstraFrontier = new globalThis.Map<string, string>(
+    currentDijkstra.frontier.map((route) => {
+      const [node, cost] = route.split(":");
+      return [node, cost];
+    }),
+  );
   const dpVisible = DP_VALUES.map((value, index) => ({
     value,
     visible: index < dpIndex,
@@ -1554,9 +1709,14 @@ function MiniGameWorld({
   }));
   const currentLeftPacket = packets[sortCursor] ?? packets[Math.max(0, packets.length - 2)];
   const currentRightPacket = packets[sortCursor + 1] ?? packets[packets.length - 1];
+  const dpExpected = DP_VALUES[dpIndex] ?? DP_VALUES[DP_VALUES.length - 1];
+  const visibleDpIndex = Math.min(dpIndex, DP_VALUES.length - 1);
+  const dpChoices = Array.from(
+    new Set([dpExpected, Math.max(1, dpExpected - 2), dpExpected + 1, dpExpected + 3]),
+  ).sort((left, right) => left - right);
   const moveCoach =
     world.kind === "binary"
-      ? `The middle value is ${pivotValue}. Compare it to 42, then cut the half that cannot win.`
+      ? `The middle value is ${pivotValue}. Compare it to ${binaryChallenge.target}, then cut the half that cannot win.`
       : world.kind === "sort"
         ? `Compare ${currentLeftPacket} and ${currentRightPacket}. Swap only when the left packet is larger.`
         : world.kind === "stack"
@@ -1564,33 +1724,44 @@ function MiniGameWorld({
             ? "Push crates into the lift. The newest crate becomes the only legal exit."
             : `Pop the top crate first: ${stack[stack.length - 1] ?? "nothing"} is blocking everything below it.`
           : world.kind === "tree"
-            ? `${currentTreeNode} is your current branch. Smaller targets go left; larger targets go right.`
+            ? `${currentTreeNode} is your current branch. Compare it with ${treeChallenge.target}: smaller goes left, larger goes right.`
             : world.kind === "graph"
               ? "BFS is a rescue line. Serve the front of the queue before touching later discoveries."
               : world.kind === "dijkstra"
                 ? "Frontier costs are tentative. Compare every visible cost and lock the smallest one."
                 : world.kind === "greedy"
                   ? "Take the event that finishes earliest and still fits, so future slots stay open."
-                  : `Use cached answers: fib(${dpIndex}) depends on fib(${Math.max(0, dpIndex - 1)}) and fib(${Math.max(0, dpIndex - 2)}).`;
-  const progressPercent = Math.min(
-    100,
+                  : `Use cached answers: fib(${visibleDpIndex}) depends on fib(${Math.max(0, visibleDpIndex - 1)}) and fib(${Math.max(0, visibleDpIndex - 2)}).`;
+  const currentRoundProgress =
     world.kind === "binary"
-      ? ((BINARY_VALUES.length - (binaryHigh - binaryLow + 1)) / (BINARY_VALUES.length - 1)) * 100
+      ? (binaryChallenge.values.length - (binaryHigh - binaryLow + 1)) /
+        Math.max(1, binaryChallenge.values.length - 1)
       : world.kind === "sort"
-        ? ((sortPass - 1) * (SORT_START.length - 1) + sortCursor) / 12 * 100
+        ? isSorted(packets)
+          ? 1
+          : Math.min(
+              0.98,
+              ((sortPass - 1) * (packets.length - 1) + sortCursor) /
+                Math.max(1, packets.length * (packets.length - 1)),
+            )
         : world.kind === "stack"
           ? stackPhase === "load"
-            ? (stack.length / 6) * 100
-            : ((3 + (3 - stack.length)) / 6) * 100
+            ? stack.length / (STACK_CHALLENGES[challengeRound].length * 2)
+            : (STACK_CHALLENGES[challengeRound].length +
+                (STACK_CHALLENGES[challengeRound].length - stack.length)) /
+              (STACK_CHALLENGES[challengeRound].length * 2)
           : world.kind === "tree"
-            ? (treeStep / TREE_PATH.length) * 100
+            ? treeStep / treeChallenge.path.length
             : world.kind === "graph"
-              ? (graphStep / BFS_ORDER.length) * 100
+              ? graphStep / bfsChallenge.order.length
               : world.kind === "dijkstra"
-                ? (dijkstraStep / DIJKSTRA_STEPS.length) * 100
+                ? dijkstraStep / DIJKSTRA_STEPS.length
                 : world.kind === "greedy"
-                  ? (greedyStep / GREEDY_ORDER.length) * 100
-                  : (dpIndex / DP_VALUES.length) * 100,
+                  ? greedyStep / GREEDY_ORDER.length
+                  : dpIndex / DP_VALUES.length;
+  const progressPercent = Math.min(
+    100,
+    ((challengeRound + currentRoundProgress) / roundCount) * 100,
   );
 
   return (
@@ -1600,7 +1771,10 @@ function MiniGameWorld({
           <ArrowLeft size={17} /> Exit
         </button>
         <div>
-          <span>GAME {world.level}</span>
+          <span>
+            GAME {world.level}
+            {roundCount > 1 ? ` / STAGE ${challengeRound + 1} OF ${roundCount}` : ""}
+          </span>
           <strong>{world.title}</strong>
         </div>
         <div className="mini-toolbar-actions">
@@ -1681,9 +1855,9 @@ function MiniGameWorld({
                 <i className="radar-ring ring-one" />
                 <i className="radar-ring ring-two" />
                 <i className="radar-sweep" />
-                <div className="radar-target">
-                  <small>LOCK TARGET</small>
-                  <strong>42</strong>
+              <div className="radar-target">
+                <small>LOCK TARGET</small>
+                  <strong>{binaryChallenge.target}</strong>
                 </div>
                 <div className="binary-strip">
                   {visibleBinary.map(({ value, active, pivot }) => (
@@ -1698,7 +1872,7 @@ function MiniGameWorld({
                 </div>
               </div>
               <div className="mini-rule-line">
-                <strong>Target 42</strong>
+                <strong>Target {binaryChallenge.target}</strong>
                 <span>Current middle is {pivotValue}</span>
               </div>
               <div className="mini-actions three">
@@ -1769,7 +1943,7 @@ function MiniGameWorld({
                 <strong>{stackPhase === "load" ? "LOAD MANIFEST" : "DISPATCH MODE"}</strong>
                 <span>
                   {stackPhase === "load"
-                    ? "Push A, B, C into the lift."
+                    ? `Push ${STACK_CHALLENGES[challengeRound].join(", ")} into the lift.`
                     : "Remove all cargo using LIFO."}
                 </span>
               </div>
@@ -1815,9 +1989,9 @@ function MiniGameWorld({
             <section className="tree-mini-game" aria-label="Binary search tree branch finder">
               <div className="path-chip-row">
                 <span>START 50</span>
-                {treeStep >= 1 && <span>RIGHT 75</span>}
-                {treeStep >= 2 && <span>LEFT 60</span>}
-                {treeStep >= 3 && <span>RIGHT 68</span>}
+                {treeChallenge.path.slice(1, treeStep + 1).map((step) => (
+                  <span key={step.node}>VISIT {step.node}</span>
+                ))}
               </div>
               <div className="tree-node-map">
                 <i className="tree-branch branch-root-left" />
@@ -1834,7 +2008,7 @@ function MiniGameWorld({
                       type="button"
                       key={value}
                       className={[
-                        value === 68 ? "target" : "",
+                        value === treeChallenge.target ? "target" : "",
                         isChoice ? "choice" : "",
                         isVisited ? "visited" : "",
                         isCurrent ? "current" : "",
@@ -1848,7 +2022,7 @@ function MiniGameWorld({
                 })}
               </div>
               <div className="mini-rule-line">
-                <strong>Target 68</strong>
+                <strong>Target {treeChallenge.target}</strong>
                 <span>Click a child of {currentTreeNode}</span>
               </div>
             </section>
@@ -1861,17 +2035,27 @@ function MiniGameWorld({
                 <strong>Visit the station waiting at the front of the queue.</strong>
               </div>
               <div className="graph-network">
-                <i className="edge edge-ab" />
-                <i className="edge edge-ac" />
-                <i className="edge edge-bd" />
-                <i className="edge edge-be" />
-                <i className="edge edge-cf" />
-                {graphVisible.map(({ node, done, active }) => (
+                <svg className="graph-lines" viewBox="0 0 100 100" aria-hidden="true">
+                  {bfsChallenge.edges.map(([from, to]) => (
+                    <line
+                      key={`${from}-${to}`}
+                      x1={GRAPH_POSITIONS[from].x}
+                      y1={GRAPH_POSITIONS[from].y}
+                      x2={GRAPH_POSITIONS[to].x}
+                      y2={GRAPH_POSITIONS[to].y}
+                    />
+                  ))}
+                </svg>
+                {graphVisible.map(({ node, done, active }, index) => (
                   <button
                     className={[done ? "done" : "", active ? "active" : ""].join(" ")}
                     disabled={complete || done}
                     key={node}
                     onClick={() => chooseGraph(node)}
+                    style={{
+                      left: `${GRAPH_POSITIONS[index].x}%`,
+                      top: `${GRAPH_POSITIONS[index].y}%`,
+                    }}
                     type="button"
                   >
                     {node}
@@ -1879,9 +2063,11 @@ function MiniGameWorld({
                 ))}
               </div>
               <div className="queue-strip">
-                Queue front: {BFS_ORDER.slice(graphStep, graphStep + 3).join(" → ") || "empty"}
+                {challengeRound === 0
+                  ? `Queue: ${bfsChallenge.order.slice(graphStep, graphStep + 4).join(" → ") || "empty"}`
+                  : `${Math.max(0, bfsChallenge.order.length - graphStep)} stations waiting. Infer the oldest discovery.`}
               </div>
-              <p>Process the glowing queue-front node, then its neighbors join the back.</p>
+              <p>Read the connected network, then serve the queue in discovery order.</p>
             </section>
           )}
 
@@ -1896,24 +2082,43 @@ function MiniGameWorld({
                 </div>
               </div>
               <div className="weighted-map">
-                <i className="city-road road-one" />
-                <i className="city-road road-two" />
-                <i className="city-road road-three" />
-                <i className="city-road road-four" />
+                <svg className="city-lines" viewBox="0 0 100 100" aria-hidden="true">
+                  {DIJKSTRA_EDGES.map(([from, to, weight]) => {
+                    const start = DIJKSTRA_POSITIONS[from];
+                    const end = DIJKSTRA_POSITIONS[to];
+                    return (
+                      <g key={`${from}-${to}`}>
+                        <line x1={start.x} y1={start.y} x2={end.x} y2={end.y} />
+                        <text x={(start.x + end.x) / 2} y={(start.y + end.y) / 2}>
+                          {weight}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </svg>
                 <span className="city-origin">0</span>
-                {currentDijkstra.frontier.map((route) => (
-                  <button
-                    className={`city-node city-${route.split(":")[0].toLowerCase()}`}
-                    disabled={complete}
-                    key={route}
-                    onClick={() => chooseDijkstra(route.split(":")[0])}
-                    type="button"
-                  >
-                    <small>FRONTIER</small>
-                    <strong>{route.split(":")[0]}</strong>
-                    <span>cost {route.split(":")[1]}</span>
-                  </button>
-                ))}
+                {Object.entries(DIJKSTRA_POSITIONS)
+                  .filter(([node]) => node !== "0")
+                  .map(([node, position]) => {
+                    const cost = dijkstraFrontier.get(node);
+                    const locked = lockedDijkstraNodes.includes(
+                      node as (typeof lockedDijkstraNodes)[number],
+                    );
+                    return (
+                      <button
+                        className={`city-node ${locked ? "locked" : cost ? "frontier" : "unknown"}`}
+                        disabled={complete || locked || !cost}
+                        key={node}
+                        onClick={() => chooseDijkstra(node)}
+                        style={{ left: `${position.x}%`, top: `${position.y}%` }}
+                        type="button"
+                      >
+                        <small>{locked ? "LOCKED" : cost ? "FRONTIER" : "UNKNOWN"}</small>
+                        <strong>{node}</strong>
+                        <span>{locked ? "done" : cost ? `cost ${cost}` : "∞"}</span>
+                      </button>
+                    );
+                  })}
               </div>
               <p>Lock the node with the lowest known distance.</p>
             </section>
@@ -1922,8 +2127,8 @@ function MiniGameWorld({
           {world.kind === "greedy" && (
             <section className="greedy-mini-game" aria-label="Greedy interval planner">
               <div className="schedule-wall">
-                <div className="timeline-scale">
-                  {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((tick) => (
+              <div className="timeline-scale">
+                  {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].map((tick) => (
                     <span key={tick}>{tick}</span>
                   ))}
                 </div>
@@ -1970,7 +2175,7 @@ function MiniGameWorld({
                 </div>
               </div>
               <div className="mini-actions">
-                {[1, 2, 3, 5].map((value) => (
+                {dpChoices.map((value) => (
                   <button type="button" disabled={complete} key={value} onClick={() => chooseDp(value)}>
                     Fill {value}
                   </button>
@@ -1984,7 +2189,11 @@ function MiniGameWorld({
           <div className="canvas-complete" role="dialog" aria-label={`${world.title} complete`}>
             <div>
               <span>GAME {world.level} CLEAR</span>
-              <h2>Next game unlocked.</h2>
+              <h2>
+                {world.level >= worlds.length
+                  ? "Campaign mastered."
+                  : "Next game unlocked."}
+              </h2>
               <p>
                 You cleared {world.topics} by playing its core rule, not by
                 memorizing a definition.
@@ -1992,7 +2201,9 @@ function MiniGameWorld({
               <div className="canvas-complete-stats">
                 <strong>GAME {world.level}</strong>
                 <strong>{world.gameType}</strong>
-                <strong>UNLOCKED</strong>
+                <strong>
+                  {world.level >= worlds.length ? "MASTERED" : "UNLOCKED"}
+                </strong>
               </div>
               <button type="button" onClick={onExit}>
                 Return to game library <ArrowRight size={17} />
